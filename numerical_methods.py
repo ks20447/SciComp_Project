@@ -3,13 +3,13 @@ Created: 23/01/2023
 
 Author: ks20447 (Adam Morris)
 
-Initial main.py file for Scientific Computing Coursework
+numerical_methods.py library to be used for Scientific Computing Coursework
 
 All commits to be pushed to "working" branch before merging to "master" branch
 
-Notes:
-Needs deltat_max parameter and error calculations
-Runge-Kutta 2nd Order needs adjusting, coefficient causing incorrect approximations currently
+To be completed:
+1) 2. Add deltat_max parameter and error calculations
+4) (Optional) Add another numerical integration method
 """
 
 import numpy as np
@@ -50,8 +50,8 @@ def eurler_step_second(f, x1, x2, t, h):
         float: next timestep
     """
     t_new = t + h
-    x1_new = x1 + h*x2
-    x2_new = x2 + h*f(t, x1, x2)
+    x1_new = x1 + h*f(t, x1, x2)[0]
+    x2_new = x2 + h*f(t, x1, x2)[1]
     
     return x1_new, x2_new, t_new
 
@@ -93,14 +93,14 @@ def runge_kutta_second(f, x1, x2, t, h):
     t_new = t + h
     
     # Runge-Kutta coefficients
-    k11 = x2
-    k21 = f(t, x1, x2)
-    k12 = (x2 + (k21/2))
-    k22 = f(t + (h/2), x1 + (k11/2), x2 + (k21/2))
-    k13 = (x2 + (k22/2))
-    k23 = f(t + (h/2), x1 + (k12/2), x2 + (k22/2))
-    k14 = (x2 + k23)
-    k24 = f(t + h, x1 + k13, x2 + k23)
+    k11 = f(t, x1, x2)[0]
+    k21 = f(t, x1, x2)[1]
+    k12 = f(t + (h/2), x1 + h*(k11/2), x2 + h*(k21/2))[0]
+    k22 = f(t + (h/2), x1 + h*(k11/2), x2 + h*(k21/2))[1]
+    k13 = f(t + (h/2), x1 + h*(k12/2), x2 + h*(k22/2))[0]
+    k23 = f(t + (h/2), x1 + h*(k12/2), x2 + h*(k22/2))[1]
+    k14 = f(t + h, x1 + h*k13, x2 + h*k23)[0]
+    k24 = f(t + h, x1 + h*k13, x2 + h*k23)[1]
     
     x1_new = x1 + (h/6)*(k11 + 2*k12 + 2*k13 + k14)
     x2_new = x2 + (h/6)*(k21 + 2*k22 + 2*k23 + k24)
@@ -147,8 +147,8 @@ def solve_to(f, x0, t1, t2, h, method):
         method (string): {'EulerFirst', 'EulerSecond', 'RK4First', 'RK4Second', 'Midpoint'} Method of solving ODE
 
     Returns:
-        array: x - approximation of ODE solution
-        array: t - timestpes of ODE solution
+        array: approximation of ODE solution
+        array: timestpes of ODE solution
     """
     
     no_steps = int((t1 + t2)/h)
