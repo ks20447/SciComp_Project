@@ -24,54 +24,42 @@ def graph_format(x_label, y_label, title, filename):
     plt.xlabel(x_label)
     plt.ylabel(y_label)
     plt.legend()
-    plt.savefig(f"results/{filename}")
-
-
-def error_plot(t, exact, approx, step):
-    
-    error = abs(approx - exact)
-    plt.loglog(t, error, label=f"Step-size {step}")
-    
-
-    return error
+    plt.savefig(f"results/{filename}") 
 
 
 def euler(ode, x0, t1, t2, steps):
     
-    for i in range(len(steps)):
-        approx, t = nm.solve_to(ode, x0, t1, t2, steps[i], 'EulerFirst')
-        exact = np.exp(t)
-        plt.figure(0, figsize=(10, 5))
-        error_plot(t, exact, approx, steps[i])
+    error = np.zeros(len(steps))
     
-    graph_format("Time", "Error", "Euler method ODE solver with decreasing timesteps", "Euler_Error.png")
+    for idx, step in enumerate(steps):
+        approx, t = nm.solve_to(ode, x0, t1, t2, step, 'EulerFirst')
+        exact = np.exp(t)
+        error[idx] = abs(approx[-1] - exact[-1])
+        
+    plt.figure(0, figsize=(10, 5))    
+    plt.loglog(steps, error)
+        
+    graph_format("Step-size", "Error", "Euler method Error against Step-size", "Euler_Error.png")
+    
+    return error
 
 
 def runge_kutta(ode, x0, t1, t2, steps):
     
-    for i in range(len(steps)):
-        approx, t = nm.solve_to(ode, x0, t1, t2, steps[i], 'RK4First')
+    error = np.zeros(len(steps))
+    
+    for idx, step in enumerate(steps):
+        approx, t = nm.solve_to(ode, x0, t1, t2, step, 'RK4First')
         exact = np.exp(t)
-        plt.figure(1, figsize=(10, 5))
-        error_plot(t, exact, approx, steps[i])
-    
-    graph_format("Time", "Error", "Runge-Kutta method ODE solver with decreasing timesteps", "RK4_Error.png")
-    
-    
-def euler_runge(ode, x0, t1, t2, steps):
-    
-    for i in range(len(steps)):
-        approx1, t = nm.solve_to(ode, x0, t1, t2, steps[i], 'EulerFirst')
-        approx2, t = nm.solve_to(ode, x0, t1, t2, steps[i], 'RK4First')
-        exact = np.exp(t)
-        plt.figure(2, figsize=(10, 5))
-        error_plot(t, exact, approx1, f"{steps[i]}: Euler")
-        error_plot(t, exact, approx2, f"{steps[i]}: RK4")
+        error[idx] = abs(approx[-1] - exact[-1])
         
+    plt.figure(1, figsize=(10, 5))    
+    plt.loglog(steps, error)
     
-    graph_format("Time", "Error", "Euler Method vs Runge-Kutta Error", "Error_Both.png")
+    graph_format("Step-size", "Error", "RK4 method Error against Step-Size", "RK4_Error.png")
+    
+    return error
             
-
 
 def run():
     
@@ -92,10 +80,14 @@ def run():
     h = 0.01
 
     # Produces loglog plot for a set of stepsizes
-    steps = [0.1, 0.01, 0.001, 0.0001]
-    euler(ode, x0, t1, t2, steps)
-    runge_kutta(ode, x0, t1, t2, steps)
-    euler_runge(ode, x0, t1, t2, [0.001, 0.0001])
+    steps = np.linspace(1e-6, 0.1, 50)
+    error_euler = euler(ode, x0, t1, t2, steps)
+    error_runge = runge_kutta(ode, x0, t1, t2, steps)
+    
+    plt.figure(2, figsize=(10, 5))
+    plt.loglog(steps, error_euler, label="Euler Method")
+    plt.loglog(steps, error_runge, label="RK4 Method")
+    graph_format("Step-size", "Error", "RK4 vs Euler: Error against Step-Size", "Error_Both.png")
     
     # Solves 2nd order ODE with specified method
     x1, t = nm.solve_to(ode_second, [1, 1], t1, t2, h, "EulerSecond")
@@ -122,4 +114,3 @@ def run():
     
     
 run()
-
