@@ -8,7 +8,6 @@ numerical_methods.py library to be used for Scientific Computing Coursework
 All commits to be pushed to "working" branch before merging to "master" branch
 
 To be completed:
-1) 2. Add deltat_max parameter and error calculations
 4) (Optional) Add another numerical integration method
 """
 
@@ -135,7 +134,7 @@ def runge_kutta(f, x, t, h):
     return x_new, t_new
     
   
-def solve_to(f, x0, t1, t2, h, method):
+def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
     """_summary_
 
     Args:
@@ -150,6 +149,9 @@ def solve_to(f, x0, t1, t2, h, method):
         array: approximation of ODE solution
         array: timestpes of ODE solution
     """
+    
+    if h > deltat_max:
+        raise ValueError("Given step-size exceeds maximum step-size")
     
     no_steps = int((t1 + t2)/h)
     t = np.zeros(no_steps + 1)
