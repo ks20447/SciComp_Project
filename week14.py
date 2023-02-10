@@ -13,6 +13,7 @@ To be completed:
 
 import numerical_methods as nm
 import matplotlib.pyplot as plt
+from scipy.integrate import solve_ivp
 import numpy as np
 
 plt.rcParams.update({"text.usetex": True, 'font.size': 14})
@@ -61,7 +62,7 @@ def runge_kutta(ode, x0, t1, t2, steps):
     return error
             
 
-def run():
+def week14_excersises():
     
     # 1st order ODE function to be solved
     def ode(t, x):
@@ -113,4 +114,4 @@ def run():
     graph_format("$x(t)$", "$\dot{x}(t)$", "$x$ vs $\dot{x}$ for large time", "Large_Time.png")
     
     
-run()
+week14_excersises()
