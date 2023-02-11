@@ -9,7 +9,11 @@ All commits to be pushed to "working" branch before merging to "master" branch
 
 To be completed:
 4) (Optional) Add another numerical integration method
+
+Notes:
+For log error graph, use log space for time
 """
+
 
 import numpy as np
 
@@ -33,28 +37,6 @@ def midpoint_method(f, x, t, h):
     return x_new, t_new
 
 
-def eurler_step_second(f, x1, x2, t, h):
-    """SIngle Euler setp for 2nd order ODE approximation
-
-    Args:
-        f (function): 2nd order ODE funcction being approximated
-        x1 (float): current x1 approximation
-        x2 (float): current x2 approximation
-        t (float): current timestep
-        h (float): stepsize
-
-    Returns:
-        float: approximation for next x1
-        float: approximation for next x2
-        float: next timestep
-    """
-    t_new = t + h
-    x1_new = x1 + h*f(t, x1, x2)[0]
-    x2_new = x2 + h*f(t, x1, x2)[1]
-    
-    return x1_new, x2_new, t_new
-
-
 def eurler_step(f, x, t, h):
     """Single Euler step for 1st odrer ODE approximations
 
@@ -68,9 +50,21 @@ def eurler_step(f, x, t, h):
         float: approximation for next x
         float: next timestep 
     """
+    if type(x) == np.float64:
+        x = [x]
+    
+    dim = len(x)
+    x = [t] + x 
+    x_new = np.zeros(dim)
     
     t_new = t + h
-    x_new = x + h*f(t, x)
+
+    if len(x) > 2:
+        for i in range(dim):
+            x_new[i] = x[i + 1] + h*f(*x)[i]
+    else:
+        for i in range(dim):
+            x_new[i] = x[i + 1] + h*f(*x)
     
     return x_new, t_new
 
@@ -110,13 +104,11 @@ def runge_kutta_second(f, x1, x2, t, h):
 
 def runge_kutta(f, x, t, h):
     """Runga-Kutta 4th order method for ODE approximations
-
     Args:
         f (function): ODE function being solved
         x (float): current x approximation
         t (float): current timestep
         h (float): stepsize
-
     Returns:
         float: approximation for next x
     """
@@ -139,7 +131,7 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
 
     Args:
         f (function): 1st or 2nd order ODE to be solved
-        x0 (float, array): Initial condition x0 = a, or vector x = [a1, a2] 
+        x0 (float, array-like): Initial condition x0 = a, or vector x = [a1, a2] 
         t1 (float): Start time
         t2 (float): End time
         h (float): Step-size
@@ -150,25 +142,48 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         array: timestpes of ODE solution
     """
     
+    
     if h > deltat_max:
         raise ValueError("Given step-size exceeds maximum step-size")
     
+    
+    if isinstance(x0, (int, float)):
+        x0 = [x0]
+    elif (x0, (list, np.array)):
+        x0 = x0
+    else:
+        raise TypeError("x0 is incorrect data type")
+    
+    
+    try:
+        f(t1, *x0)
+    except TypeError:
+        print(f"Function and initial condition dimesions do not match")
+        quit()
+      
+        
     no_steps = int((t1 + t2)/h)
-    t = np.zeros(no_steps + 1)
+    t = np.zeros(no_steps)
+    x = np.zeros((len(x0), len(t)))
 
+
+    for ind, iv in enumerate(x0):
+        x[ind][0] = iv
+    
+    
     match method:
-        case "EulerFirst":
-            x = np.zeros(len(t))
-            x[0] = x0
+        
+        case "Euler":
             for i in range(len(t) - 1):
-                x[i + 1], t[i + 1] = eurler_step(f, x[i], t[i], h)
-
-        case "EulerSecond":   
-            x = np.zeros((2, len(t)))
-            x[0][0], x[1][0] = x0[0], x0[1]
-            for i in range(len(t) - 1):
-                x[0][i + 1], x[1][i + 1], t[i + 1] = eurler_step_second(f, x[0][i], x[1][i], t[i], h)                     
-   
+                args = []
+                for j in range(len(x0)):
+                    args.append(x[j][i])
+                for j in range(len(x0)):
+                    x_new, t_new = eurler_step(f, args, t[i], h)
+                    for k in range(len(x_new)):
+                        x[k][i+1] = x_new[k]
+                    t[i+1] = t_new 
+                          
         case "RK4First":
             x = np.zeros(len(t))
             x[0] = x0
@@ -180,7 +195,7 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
             x[0][0], x[1][0] = x0[0], x0[1]
             for i in range(len(t) - 1):
                 x[0][i + 1], x[1][i + 1], t[i + 1] = runge_kutta_second(f, x[0][i], x[1][i], t[i], h)  
-                                     
+                                                        
         case "Midpoint":
             x = np.zeros(len(t))
             x[0] = x0
