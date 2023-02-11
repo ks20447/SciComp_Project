@@ -14,6 +14,7 @@ Notes:
 For log error graph, use log space for time
 """
 
+
 import numpy as np
 
 
@@ -52,16 +53,17 @@ def eurler_step(f, x, t, h):
     if type(x) == np.float64:
         x = [x]
     
+    dim = len(x)
     x = [t] + x 
-    x_new = np.zeros(len(x) - 1)
+    x_new = np.zeros(dim)
     
     t_new = t + h
 
     if len(x) > 2:
-        for i in range(len(x) - 1):
+        for i in range(dim):
             x_new[i] = x[i + 1] + h*f(*x)[i]
     else:
-        for i in range(len(x) - 1):
+        for i in range(dim):
             x_new[i] = x[i + 1] + h*f(*x)
     
     return x_new, t_new
@@ -102,13 +104,11 @@ def runge_kutta_second(f, x1, x2, t, h):
 
 def runge_kutta(f, x, t, h):
     """Runga-Kutta 4th order method for ODE approximations
-
     Args:
         f (function): ODE function being solved
         x (float): current x approximation
         t (float): current timestep
         h (float): stepsize
-
     Returns:
         float: approximation for next x
     """
@@ -142,6 +142,7 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         array: timestpes of ODE solution
     """
     
+    
     if h > deltat_max:
         raise ValueError("Given step-size exceeds maximum step-size")
     
@@ -159,19 +160,17 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
     except TypeError:
         print(f"Function and initial condition dimesions do not match")
         quit()
-    
-    
-    num_steps = int(t1+t2/h)
-    t = np.linspace(t1, t2, num_steps)
-    
+      
+        
+    no_steps = int((t1 + t2)/h)
+    t = np.zeros(no_steps)
     x = np.zeros((len(x0), len(t)))
+
 
     for ind, iv in enumerate(x0):
         x[ind][0] = iv
     
-    no_steps = int((t1 + t2)/h)
-    t = np.zeros(no_steps)
-
+    
     match method:
         
         case "Euler":
@@ -196,7 +195,7 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
             x[0][0], x[1][0] = x0[0], x0[1]
             for i in range(len(t) - 1):
                 x[0][i + 1], x[1][i + 1], t[i + 1] = runge_kutta_second(f, x[0][i], x[1][i], t[i], h)  
-                                     
+                                                        
         case "Midpoint":
             x = np.zeros(len(t))
             x[0] = x0
