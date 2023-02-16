@@ -19,6 +19,14 @@ import numpy as np
 
 
 def graph_format(x_label, y_label, title, filename):
+    """Matplotlib.pyplot plot formatting
+
+    Args:
+        x_label (string): x-axis label
+        y_label (string): y-axis label
+        title (string): title of plot
+        filename (string): name given to saved .png plot
+    """
     
     plt.grid()
     plt.title(title)
