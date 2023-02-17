@@ -3,7 +3,7 @@ Created: 07/02/2023
 
 Author: ks20447 (Adam Morris)
 
-testing.py file to test numerical_methods.py library and produce results
+week14.py file to complete week 14 excersises 
 
 All commits to be pushed to "working" branch before merging to "master" branch
 
@@ -15,7 +15,6 @@ import numerical_methods as nm
 import matplotlib.pyplot as plt
 import numpy as np
 
-plt.rcParams.update({"text.usetex": True, 'font.size': 14})
 
 def graph_format(x_label, y_label, title, filename):
     

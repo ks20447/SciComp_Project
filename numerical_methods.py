@@ -18,6 +18,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+plt.rcParams.update({"text.usetex": True, 'font.size': 14}) # Use Latex fonts for all matplotlib.pyplot plots
+
+
 def graph_format(x_label, y_label, title, filename):
     """Matplotlib.pyplot plot formatting
 
@@ -148,8 +151,8 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
     """Numerically solves given ODE(s) from t1 to t2, in step-size h, with intitial condition(s) x0
 
     Args:
-        f (function): 1st or 2nd order ODE to be solved
-        x0 (float, array-like): Initial condition x0 = a, or vector x = [a1, a2] 
+        f (function): ODE system to be solved. lambda t, x_1, ..., x_n : f(x_1, ..., x_n)
+        x0 (float, array-like): Initial condition x_0 = a, or vector x = [a_1, ..., a_n] 
         t1 (float): Start time
         t2 (float): End time
         h (float): Step-size
