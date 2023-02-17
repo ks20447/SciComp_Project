@@ -30,20 +30,20 @@ def week15_excersises():
         
         return dxdt, dydt
 
-
-    # x1, t1 = nm.solve_to(lambda t, x, y: lokta_volterra(t, x, y, 0.25), (1 , 1), 0, 250, 0.01, "Euler")
-    # x2, t2 = nm.solve_to(lambda t, x, y: lokta_volterra(t, x, y, 0.27), (1 , 1), 0, 250, 0.01, "Euler")
+    x1, t1 = nm.solve_to(lambda t, x, y: lokta_volterra(t, x, y, 0.25), (0.39 , 0.30), 0, 20, 0.01, "Euler")
+    x2, t2 = nm.solve_to(lambda t, x, y: lokta_volterra(t, x, y, 0.30), (0.39 , 0.30), 0, 20, 0.01, "Euler")
     
-    # plt.figure(1, figsize=(10, 5))
-    # plt.plot(t1, x1[0], label="$b = 0.25$")
-    # plt.plot(t2, x2[0], label="$b = 0.27$")
-    # nm.graph_format("Time (s)", "$x(t)$", "Lokta-Volterra Equations", "Lokta_Volterra")
+    plt.figure(1, figsize=(10, 5))
+    plt.plot(t1, x1[0], label="$b = 0.25$")
+    plt.plot(t2, x2[0], label="$b = 0.30$")
+    nm.graph_format("Time (s)", "$x(t)$", "Lokta-Volterra Equations", "Lokta_Volterra")
 
-    # plt.figure(2, figsize=(10, 5))
-    # plt.plot(x1[0], x1[1], label="$b = 0.25$")
-    # plt.plot(x2[0], x2[1], label="$b = 0.27$")
-    # nm.graph_format("$x(t)$", "$\dot{x}(t)$", "Lokta-Volterra Equations", "Lokta_Volterra_Cycle")
+    plt.figure(2, figsize=(10, 5))
+    plt.plot(x1[0], x1[1], label="$b = 0.25$")
+    plt.plot(x2[0], x2[1], label="$b = 0.30$")
+    nm.graph_format("$x(t)$", "$\dot{x}(t)$", "Lokta-Volterra Equations", "Lokta_Volterra_Cycle")
     
+    # I.C (0.39, 0.30) produces limit cycle period of ~19s (b = 0.25)
     
     def num_shooting(u):
         x, y, t = u
@@ -57,14 +57,25 @@ def week15_excersises():
         
         return f1, f2, p
     
-    # sol, time = nm.solve_to(lambda t, x, y: lokta_volterra(t, x, y, 0.25), (0.39 , 0.30), 0, 19, 0.01, "RK4Second")
-    # plt.plot(time, sol[0])
-    # plt.plot(sol[0], sol[1])
-    # plt.show()
-    
-    x, info, ier, mesg = fsolve(num_shooting, [0.39, 0.30, 19], full_output=True)
+    x0 = [0.39, 0.30, 19]
+    x0, info, ier, msg = fsolve(num_shooting, x0, full_output=True)
     if ier == 1:
-        print(f"Root finder found the solution x={x} after {info['nfev']} function calls; the norm of the final residual is {np.linalg.norm(info['fvec'])}")         
+        print(f"Root finder found the solution x={x0} after {info['nfev']} function calls; the norm of the final residual is {np.linalg.norm(info['fvec'])}")         
+    else:
+        print(f"Root finder failed with error message: {msg}")
+        return
     
+    x0 = np.around(x0, decimals=3)
+    x, t = nm.solve_to(lambda t, x, y: lokta_volterra(t, x, y, 0.25), (x0[0] , x0[1]), 0, x0[2], 0.01, "Euler")
+    
+    plt.figure(3, figsize=(10, 5))
+    plt.plot(t, x[0], label="$b = 0.25$")
+    nm.graph_format("Time (s)", "$x(t)$", "Lokta-Volterra Equations", "Lokta_Volterra_Exact")
+    
+    plt.figure(4, figsize=(10, 5))
+    plt.plot(x[0], x[1], label="$b = 0.25$")
+    nm.graph_format("$x(t)$", "$\dot{x}(t)$", "Lokta-Volterra Equations", "Lokta_Volterra_Cycle_Exact")
+
+
 
 week15_excersises()
