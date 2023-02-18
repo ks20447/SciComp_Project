@@ -14,9 +14,29 @@ Notes:
 For log error graph, use log space for time
 """
 
-
+import matplotlib.pyplot as plt
 import numpy as np
+from scipy.optimize import fsolve
 
+
+def graph_format(x_label, y_label, title, filename):
+    """Matplotlib.pyplot plot formatting
+
+    Args:
+        x_label (string): x-axis label
+        y_label (string): y-axis label
+        title (string): title of plot
+        filename (string): name given to saved .png plot
+    """
+    
+    
+    plt.grid()
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.legend()
+    plt.savefig(f"results/{filename}") 
+    
 
 def midpoint_method(f, x, t, h):
     """Explicit midpoint method for ODE approximations
@@ -50,6 +70,7 @@ def eurler_step(f, x, t, h):
         float: approximation for next x
         float: next timestep 
     """
+    
     if type(x) == np.float64:
         x = [x]
     
@@ -127,26 +148,32 @@ def runge_kutta(f, x, t, h):
     
   
 def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
-    """_summary_
+    """Numerically solves given ODE(s) from t1 to t2, in step-size h, with intitial condition(s) x0
 
     Args:
-        f (function): 1st or 2nd order ODE to be solved
-        x0 (float, array-like): Initial condition x0 = a, or vector x = [a1, a2] 
+        f (function): ODE system to be solved. lambda t, x_1, ..., x_n : f(x_1, ..., x_n)
+        x0 (float, array-like): Initial condition x_0 = a, or vector x = [a_1, ..., a_n] 
         t1 (float): Start time
         t2 (float): End time
         h (float): Step-size
-        method (string): {'EulerFirst', 'EulerSecond', 'RK4First', 'RK4Second', 'Midpoint'} Method of solving ODE
+        method (string): {'Euler', 'RK4First', 'RK4Second', 'Midpoint'} Method of solving ODE
+        deltat_max (float, optional): Maximum step-size allowed for solution. Defaults to 0.5.
+
+    Raises:
+        ValueError: h value is larger than deltat_max
+        TypeError: x0 should be given as an integer/float or array-like
+        SyntaxError: method type did not match predefined methods
 
     Returns:
         array: approximation of ODE solution
         array: timestpes of ODE solution
     """
-    
+        
     
     if h > deltat_max:
         raise ValueError("Given step-size exceeds maximum step-size")
     
-    
+
     if isinstance(x0, (int, float)):
         x0 = [x0]
     elif (x0, (list, np.array)):
@@ -161,12 +188,12 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         print(f"Function and initial condition dimesions do not match")
         quit()
       
-        
-    no_steps = int((t1 + t2)/h)
+          
+    no_steps = int((t2 - t1)/h)
     t = np.zeros(no_steps)
+    t[0], t[-1] = t1, t2
+    
     x = np.zeros((len(x0), len(t)))
-
-
     for ind, iv in enumerate(x0):
         x[ind][0] = iv
     
@@ -182,11 +209,12 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
                     x_new, t_new = eurler_step(f, args, t[i], h)
                     for k in range(len(x_new)):
                         x[k][i+1] = x_new[k]
-                    t[i+1] = t_new 
+                    t[i+1] = t_new
+                 
                           
         case "RK4First":
             x = np.zeros(len(t))
-            x[0] = x0
+            x[0] = x0[0]
             for i in range(len(t) - 1):
                 x[i + 1], t[i + 1] = runge_kutta(f, x[i], t[i], h)
 
@@ -201,7 +229,71 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
             x[0] = x0
             for i in range(len(t) - 1):
                 x[i + 1], t[i + 1] = midpoint_method(f, x[i], t[i], h)
+                
+        case _:
+            raise SyntaxError("Incorrect method type specified")
+            
 
                     
     return x, t
 
+
+def shooting(ode, x0, period, phase, method="Euler"):
+    """Numerical shooting to solve for ODE limit cycles
+
+    Args:
+        ode (function): ODE to be solved. lambda t, x_1, ..., x_n : f(x_1, ..., x_n) 
+        x0 (float, array-like): Initial condition guess x_0 = a, or vector x = [a_1, ..., a_n]
+        period (float): Period guess 
+        phase (function): Phase-condition. lambda p (= x1, ..., x_n): f(x_1, ..., x_n)
+        method (string, optional): Method used to solve ODE. Defaults to "Euler". 
+
+    Returns:
+        array: solution to ODE with found limit cycle conditions
+        array: timesteps of ODE solution
+        array: conditions of limit cycle (as seen from output)
+    """
+    
+    
+    try:
+        ode(0, *x0)
+    except TypeError:
+        print(f"Function and initial condition dimesions do not match")
+        quit()
+        
+        
+    if isinstance(x0, (int, float)):
+        x0 = [x0]
+    elif (x0, (list, np.array)):
+        x0 = x0
+    else:
+        raise TypeError("x0 is incorrect data type")
+        
+        
+    def root_ode(u):
+        x0 = u[0:-1]
+        t = u[-1]
+        sols, time = solve_to(ode, x0, 0, t, 0.01, method)
+        f = np.zeros(len(sols))
+        
+        for ind, sol in enumerate(sols):
+            f[ind] = sol[0] - sol[-1]
+        
+        p = np.array(phase(x0))
+        
+        return np.append(f, p)
+    
+    
+    x0 = x0 + [period]    
+    x0, info, ier, msg = fsolve(root_ode, x0, full_output=True)
+    period = x0[-1]
+    
+    if ier == 1:
+        print(f"Root finder found the solution x={x0} after {info['nfev']} function calls")         
+    else:
+        print(f"Root finder failed with error message: {msg}")
+        return
+    
+    x, t = solve_to(ode, x0[0:-1], 0, period, 0.01, method)
+    
+    return x, t, x0

@@ -3,7 +3,7 @@ Created: 07/02/2023
 
 Author: ks20447 (Adam Morris)
 
-testing.py file to test numerical_methods.py library and produce results
+week14.py file to complete week 14 excersises 
 
 All commits to be pushed to "working" branch before merging to "master" branch
 
@@ -13,10 +13,11 @@ To be completed:
 
 import numerical_methods as nm
 import matplotlib.pyplot as plt
-from scipy.integrate import solve_ivp
 import numpy as np
 
-plt.rcParams.update({"text.usetex": True, 'font.size': 14})
+
+plt.rcParams.update({"text.usetex": True, 'font.size': 14}) # Use Latex fonts for all matplotlib.pyplot plots
+
 
 def graph_format(x_label, y_label, title, filename):
     
@@ -33,9 +34,9 @@ def euler(ode, x0, t1, t2, steps):
     error = np.zeros(len(steps))
     
     for idx, step in enumerate(steps):
-        approx, t = nm.solve_to(ode, x0, t1, t2, step, 'EulerFirst')
+        approx, t = nm.solve_to(ode, x0, t1, t2, step, 'Euler')
         exact = np.exp(t)
-        error[idx] = abs(approx[-1] - exact[-1])
+        error[idx] = abs(approx[0][-1] - exact[-1])
         
     plt.figure(0, figsize=(10, 5))    
     plt.loglog(steps, error)
@@ -88,10 +89,10 @@ def week14_excersises():
     plt.figure(2, figsize=(10, 5))
     plt.loglog(steps, error_euler, label="Euler Method")
     plt.loglog(steps, error_runge, label="RK4 Method")
-    graph_format("Step-size", "Error", "RK4 vs Euler: Error against Step-Size", "Error_Both.png")
+    nm.graph_format("Step-size", "Error", "RK4 vs Euler: Error against Step-Size", "Error_Both.png")
     
     # Solves 2nd order ODE with specified method
-    x1, t = nm.solve_to(ode_second, [1, 1], t1, t2, h, "EulerSecond")
+    x1, t = nm.solve_to(ode_second, [1, 1], t1, t2, h, "Euler")
     x2, t = nm.solve_to(ode_second, [1, 1], t1, t2, h, "RK4Second")
     
     # Plots approximations against the exact ODE solution
@@ -101,17 +102,17 @@ def week14_excersises():
     plt.plot(t, x2[0], label="$x(t)$: RK4 Approximation")
     plt.plot(t, exact, '--', label="$x(t) = cos(t) + sin(t)$")
     plt.plot()
-    graph_format("Time $(s)$", "$x(t)$", "Numerical Solutions vs Exact Solution of 2nd Order ODE", "Euler_RK4.png")
+    nm.graph_format("Time $(s)$", "$x(t)$", "Numerical Solutions vs Exact Solution of 2nd Order ODE", "Euler_RK4.png")
     
     # Solution to ODE over large time 
-    x1, t = nm.solve_to(ode_second, [1, 1], t1, 10, h, "EulerSecond")
+    x1, t = nm.solve_to(ode_second, [1, 1], t1, 10, h, "Euler")
     x2, t = nm.solve_to(ode_second, [1, 1], t1, 10, h, "RK4Second")
     
     plt.figure(4, figsize=(10, 5))
     plt.plot(x1[0], x1[1], label="$x(t)$: Euler Approximation")
     plt.plot(x2[0], x2[1], label="$x(t)$: RK4 Approximation")
     plt.plot()
-    graph_format("$x(t)$", "$\dot{x}(t)$", "$x$ vs $\dot{x}$ for large time", "Large_Time.png")
+    nm.graph_format("$x(t)$", "$\dot{x}(t)$", "$x$ vs $\dot{x}$ for large time", "Large_Time.png")
     
     
 week14_excersises()
