@@ -16,6 +16,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+plt.rcParams.update({"text.usetex": True, 'font.size': 14}) # Use Latex fonts for all matplotlib.pyplot plots
+
+
 def graph_format(x_label, y_label, title, filename):
     
     plt.grid()

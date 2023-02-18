@@ -16,9 +16,7 @@ For log error graph, use log space for time
 
 import matplotlib.pyplot as plt
 import numpy as np
-
-
-plt.rcParams.update({"text.usetex": True, 'font.size': 14}) # Use Latex fonts for all matplotlib.pyplot plots
+from scipy.optimize import fsolve
 
 
 def graph_format(x_label, y_label, title, filename):
@@ -30,6 +28,7 @@ def graph_format(x_label, y_label, title, filename):
         title (string): title of plot
         filename (string): name given to saved .png plot
     """
+    
     
     plt.grid()
     plt.title(title)
@@ -71,6 +70,7 @@ def eurler_step(f, x, t, h):
         float: approximation for next x
         float: next timestep 
     """
+    
     if type(x) == np.float64:
         x = [x]
     
@@ -168,12 +168,12 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         array: approximation of ODE solution
         array: timestpes of ODE solution
     """
-    
+        
     
     if h > deltat_max:
         raise ValueError("Given step-size exceeds maximum step-size")
     
-    
+
     if isinstance(x0, (int, float)):
         x0 = [x0]
     elif (x0, (list, np.array)):
@@ -188,7 +188,7 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         print(f"Function and initial condition dimesions do not match")
         quit()
       
-        
+          
     no_steps = int((t2 - t1)/h)
     t = np.zeros(no_steps)
     t[0], t[-1] = t1, t2
@@ -209,7 +209,8 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
                     x_new, t_new = eurler_step(f, args, t[i], h)
                     for k in range(len(x_new)):
                         x[k][i+1] = x_new[k]
-                    t[i+1] = t_new 
+                    t[i+1] = t_new
+                 
                           
         case "RK4First":
             x = np.zeros(len(t))
@@ -236,3 +237,63 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
                     
     return x, t
 
+
+def shooting(ode, x0, period, phase, method="Euler"):
+    """Numerical shooting to solve for ODE limit cycles
+
+    Args:
+        ode (function): ODE to be solved. lambda t, x_1, ..., x_n : f(x_1, ..., x_n) 
+        x0 (float, array-like): Initial condition guess x_0 = a, or vector x = [a_1, ..., a_n]
+        period (float): Period guess 
+        phase (function): Phase-condition. lambda p (= x1, ..., x_n): f(x_1, ..., x_n)
+        method (string, optional): Method used to solve ODE. Defaults to "Euler". 
+
+    Returns:
+        array: solution to ODE with found limit cycle conditions
+        array: timesteps of ODE solution
+        array: conditions of limit cycle (as seen from output)
+    """
+    
+    
+    try:
+        ode(0, *x0)
+    except TypeError:
+        print(f"Function and initial condition dimesions do not match")
+        quit()
+        
+        
+    if isinstance(x0, (int, float)):
+        x0 = [x0]
+    elif (x0, (list, np.array)):
+        x0 = x0
+    else:
+        raise TypeError("x0 is incorrect data type")
+        
+        
+    def root_ode(u):
+        x0 = u[0:-1]
+        t = u[-1]
+        sols, time = solve_to(ode, x0, 0, t, 0.01, method)
+        f = np.zeros(len(sols))
+        
+        for ind, sol in enumerate(sols):
+            f[ind] = sol[0] - sol[-1]
+        
+        p = np.array(phase(x0))
+        
+        return np.append(f, p)
+    
+    
+    x0 = x0 + [period]    
+    x0, info, ier, msg = fsolve(root_ode, x0, full_output=True)
+    period = x0[-1]
+    
+    if ier == 1:
+        print(f"Root finder found the solution x={x0} after {info['nfev']} function calls")         
+    else:
+        print(f"Root finder failed with error message: {msg}")
+        return
+    
+    x, t = solve_to(ode, x0[0:-1], 0, period, 0.01, method)
+    
+    return x, t, x0
