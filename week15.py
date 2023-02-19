@@ -8,10 +8,6 @@ week15.py file to complete week 15 excersises
 All commits to be pushed to "working" branch before merging to "master" branch
 
 To be completed:
-4) Generalise your code so that you can use arbitrary differential equations of arbitrary dimension (assume they are always in first-order form).
-    How should a user pass the differential equations to your code?
-    How should a user pass the phase-condition to your code?
-    What options might a user want to have access to?
 """
 
 import numerical_methods as nm

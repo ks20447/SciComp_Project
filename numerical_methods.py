@@ -11,12 +11,32 @@ To be completed:
 4) (Optional) Add another numerical integration method
 
 Notes:
-For log error graph, use log space for time
 """
 
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.optimize import fsolve
+
+
+def error_handle(f, x0, t, h, deltat_max):
+    
+    if h > deltat_max:
+        raise ValueError("Given step-size exceeds maximum step-size")
+    
+    if isinstance(x0, (int, float)):
+        x0 = [x0]
+    elif isinstance(x0, list):
+        x0 = x0
+    else:
+        raise TypeError("x is incorrect data type")
+    
+    try:
+        f(t, *x0)
+    except TypeError:
+        raise TypeError(f"Function and initial condition dimesions do not match")
+        
+    return x0
+    
 
 
 def graph_format(x_label, y_label, title, filename):
@@ -58,21 +78,23 @@ def midpoint_method(f, x, t, h):
 
 
 def eurler_step(f, x, t, h):
-    """Single Euler step for 1st odrer ODE approximations
+    """Single Euler step for any odrer ODE approximations
 
     Args:
-        f (function): 1st order ODE function being approximated
+        f (function): ODE function being approximated
         x (float): current x approximation
         t (float): current timestep 
         h (float): stepsize
+        
+    Raises:
+        TypeError: x should be given as an integer/float or array-like
 
     Returns:
         float: approximation for next x
         float: next timestep 
     """
     
-    if type(x) == np.float64:
-        x = [x]
+    x = error_handle(f, x, t, h, deltat_max=0.5)
     
     dim = len(x)
     x = [t] + x 
@@ -169,26 +191,9 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         array: timestpes of ODE solution
     """
         
-    
-    if h > deltat_max:
-        raise ValueError("Given step-size exceeds maximum step-size")
-    
-
-    if isinstance(x0, (int, float)):
-        x0 = [x0]
-    elif (x0, (list, np.array)):
-        x0 = x0
-    else:
-        raise TypeError("x0 is incorrect data type")
-    
-    
-    try:
-        f(t1, *x0)
-    except TypeError:
-        print(f"Function and initial condition dimesions do not match")
-        quit()
-      
-          
+        
+    x0 = error_handle(f, x0, t1, h, deltat_max)
+            
     no_steps = int((t2 - t1)/h)
     t = np.zeros(no_steps)
     t[0], t[-1] = t1, t2
@@ -238,7 +243,7 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
     return x, t
 
 
-def shooting(ode, x0, period, phase, method="Euler"):
+def shooting(ode, x0, period, phase, method="Euler", h=0.01):
     """Numerical shooting to solve for ODE limit cycles
 
     Args:
@@ -246,7 +251,8 @@ def shooting(ode, x0, period, phase, method="Euler"):
         x0 (float, array-like): Initial condition guess x_0 = a, or vector x = [a_1, ..., a_n]
         period (float): Period guess 
         phase (function): Phase-condition. lambda p (= x1, ..., x_n): f(x_1, ..., x_n)
-        method (string, optional): Method used to solve ODE. Defaults to "Euler". 
+        method (string, optional): Method used to solve ODE. Defaults to "Euler"
+        h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01  
 
     Returns:
         array: solution to ODE with found limit cycle conditions
@@ -254,26 +260,13 @@ def shooting(ode, x0, period, phase, method="Euler"):
         array: conditions of limit cycle (as seen from output)
     """
     
-    
-    try:
-        ode(0, *x0)
-    except TypeError:
-        print(f"Function and initial condition dimesions do not match")
-        quit()
-        
-        
-    if isinstance(x0, (int, float)):
-        x0 = [x0]
-    elif (x0, (list, np.array)):
-        x0 = x0
-    else:
-        raise TypeError("x0 is incorrect data type")
+    x0 = error_handle(ode, x0, 0, h, deltat_max=0.5)
         
         
     def root_ode(u):
         x0 = u[0:-1]
         t = u[-1]
-        sols, time = solve_to(ode, x0, 0, t, 0.01, method)
+        sols, time = solve_to(ode, x0, 0, t, h, method)
         f = np.zeros(len(sols))
         
         for ind, sol in enumerate(sols):
