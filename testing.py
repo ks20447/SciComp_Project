@@ -8,7 +8,6 @@ testing.py file to test numerical_methods.py functionality
 All commits to be pushed to "working" branch before merging to "master" branch
 
 To be completed:
-solve_to exception testing
 shooting success and exception testing
 
 Notes:
@@ -82,6 +81,23 @@ class NumericalMethodsTesting(unittest.TestCase):
             self.assertTrue(math.isclose(x[-1], math.e, rel_tol=1e-1, abs_tol=0.0))
         self.assertEqual(t1[0], 0)
         
+    
+    def test_solve_to_exceptions(self):
+        with self.assertRaises(ValueError) as exception_context:
+            nm.solve_to(ode_higher, [1, 1, 1], 0, 1, 1, "Euler")
+        self.assertEqual(str(exception_context.exception),
+            "Given step-size exceeds maximum step-size")
+
+        with self.assertRaises(TypeError) as exception_context:
+            nm.solve_to(ode_higher, "test", 0, 1, 0.01, "Euler")
+        self.assertEqual(str(exception_context.exception),
+            "x is incorrect data type")
+        
+        with self.assertRaises(TypeError) as exception_context:
+            nm.solve_to(ode_higher, [1, 1], 0, 1, 0.01, "Euler")
+        self.assertEqual(str(exception_context.exception),
+            "Function and initial condition dimesions do not match")
+        
 
 def ode_first(t, x):
     dxdt = x
@@ -99,6 +115,6 @@ def ode_higher(t, x, y, z):
     dydt = y
     dzdt = z
     return dxdt, dydt, dzdt
-    
+
 
 unittest.main()
