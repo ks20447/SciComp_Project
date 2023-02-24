@@ -25,7 +25,7 @@ def error_handle(f, x0, t, h, deltat_max):
     
     if isinstance(x0, (int, float)):
         x0 = [x0]
-    elif isinstance(x0, list):
+    elif isinstance(x0, (list, np.ndarray)):
         x0 = x0
     else:
         raise TypeError("x is incorrect data type")
@@ -77,7 +77,7 @@ def midpoint_method(f, x, t, h):
     return x_new, t_new
 
 
-def eurler_step(f, x, t, h):
+def eurler_step(f, x, t, h, solve_to=False):
     """Single Euler step for any odrer ODE approximations
 
     Args:
@@ -93,8 +93,8 @@ def eurler_step(f, x, t, h):
         float: approximation for next x
         float: next timestep 
     """
-    
-    x = error_handle(f, x, t, h, deltat_max=0.5)
+    if not solve_to:
+        x = error_handle(f, x, t, h, deltat_max=0.5)
     
     dim = len(x)
     x = [t] + x 
@@ -211,7 +211,7 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
                 for j in range(len(x0)):
                     args.append(x[j][i])
                 for j in range(len(x0)):
-                    x_new, t_new = eurler_step(f, args, t[i], h)
+                    x_new, t_new = eurler_step(f, args, t[i], h, solve_to=True)
                     for k in range(len(x_new)):
                         x[k][i+1] = x_new[k]
                     t[i+1] = t_new
