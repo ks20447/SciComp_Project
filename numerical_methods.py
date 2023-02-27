@@ -185,8 +185,8 @@ def step_calc(t1, t2, h):
     
     
     no_steps = int((t2 - t1)/h)
-    final_h = ((t2 - t1)/h - int((t2 - t1)/h))*h
-    if not math.isclose(final_h, 0):
+    final_h = ((t2 - t1)/h - no_steps)*h
+    if not math.isclose(final_h, 0, rel_tol=1e-6):
         no_steps += 1
     else:
         final_h = 0
@@ -287,13 +287,13 @@ def shooting(ode, x0, period, phase, method="Euler", h=0.01):
     Args:
         ode (function): ODE to be solved. lambda t, x_1, ..., x_n : f(x_1, ..., x_n) 
         x0 (float, array-like): Initial condition guess x_0 = a, or vector x = [a_1, ..., a_n]
-        period (float): Period guess 
-        phase (function): Phase-condition. lambda p (= x1, ..., x_n): f(x_1, ..., x_n)
+        period (float): Initial guess for ODE limit cycle period time    
+        phase (function): Phase condition. lambda p (= x1, ..., x_n): f(x_1, ..., x_n)
         method (string, optional): Method used to solve ODE. Defaults to "Euler"
         h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
-        
+
     Raises:
-        RuntimeError: Root finder failed to converge  
+        RuntimeError: Root finder failed to converge 
 
     Returns:
         array: solution to ODE with found limit cycle conditions
@@ -320,13 +320,12 @@ def shooting(ode, x0, period, phase, method="Euler", h=0.01):
     
     x0 = x0 + [period]  
     x0, info, ier, msg = fsolve(root_ode, x0, full_output=True)
-    period = x0[-1]
     
     if ier == 1:
-        print(f"Root finder found the solution x={x0} after {info['nfev']} function calls")         
+        print(f"Root finder found the solution x = {x0[0:-1]}, period t = {x0[-1]}s after {info['nfev']} function calls")         
     else:
         raise RuntimeError(f"Root finder failed with error message: {msg}") 
     
-    x, t = solve_to(ode, x0[0:-1], 0, period, 0.01, method)
+    x, t = solve_to(ode, x0[0:-1], 0, x0[-1], 0.01, method)
     
     return x, t, x0

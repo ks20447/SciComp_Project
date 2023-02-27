@@ -8,14 +8,12 @@ testing.py file to test numerical_methods.py functionality
 All commits to be pushed to "working" branch before merging to "master" branch
 
 To be completed:
-shooting success and exception testing
 
 Notes:
 """
 
 
 import numerical_methods as nm
-import numpy as np
 import math
 import unittest
 
@@ -98,6 +96,44 @@ class NumericalMethodsTesting(unittest.TestCase):
         self.assertEqual(str(exception_context.exception),
             "Function and initial condition dimesions do not match")
         
+        with self.assertRaises(ValueError) as exception_context:
+            nm.solve_to(ode_higher, [1, 1, 1], 1, 0, 0.01, "Euler")
+        self.assertEqual(str(exception_context.exception),
+            "t2 must be greater than t1")
+        
+        with self.assertRaises(SyntaxError) as exception_context:
+            nm.solve_to(ode_higher, [1, 1, 1], 0, 1, 0.01, "test")
+        self.assertEqual(str(exception_context.exception),
+            "Incorrect method type specified")
+      
+        
+    def test_shooting_success(self):
+        x, t, x0 = nm.shooting(ode, [1, 0], 6.3, phase)
+        self.assertTrue(math.isclose(x[0][-1], x[0][-1]))
+        self.assertTrue(math.isclose(x[1][-1], x[1][-1]))
+        
+    
+    def test_solve_to_exceptions(self):
+        with self.assertRaises(ValueError) as exception_context:
+            nm.shooting(ode, [1, 0], 6.3, phase, h=1)
+        self.assertEqual(str(exception_context.exception),
+            "Given step-size exceeds maximum step-size")
+
+        with self.assertRaises(TypeError) as exception_context:
+            nm.shooting(ode, "test", 6.3, phase)
+        self.assertEqual(str(exception_context.exception),
+            "x is incorrect data type")
+        
+        with self.assertRaises(TypeError) as exception_context:
+            nm.shooting(ode, [1, 0, 0], 6.3, phase)
+        self.assertEqual(str(exception_context.exception),
+            "Function and initial condition dimesions do not match")
+        
+        with self.assertRaises(SyntaxError) as exception_context:
+            nm.shooting(ode, [1, 0], 6.3, phase, method="test")
+        self.assertEqual(str(exception_context.exception),
+            "Incorrect method type specified")
+        
 
 def ode_first(t, x):
     dxdt = x
@@ -115,6 +151,22 @@ def ode_higher(t, x, y, z):
     dydt = y
     dzdt = z
     return dxdt, dydt, dzdt
+
+
+def hopf_normal_form(t, u1, u2, sigma, beta):
+    du1dt = beta*u1 - u2 + sigma*u1*(u1**2 + u2**2)
+    du2dt = u1 + beta*u2 + sigma*u2*(u1**2 + u2**2)
+    return du1dt, du2dt
+
+
+def hopf_phase(p, sigma, beta):
+    u1, u2 = p
+    p = beta*u1 - u2 + sigma*u1*(u1**2 + u2**2)
+    return p 
+
+
+ode = lambda t, x1, x2: hopf_normal_form(t, x1, x2, -1, 1)
+phase = lambda p: hopf_phase(p, -1, 1)
 
 
 unittest.main()
