@@ -78,7 +78,7 @@ def midpoint_method(f, x, t, h):
     return x_new, t_new
 
 
-def eurler_step(f, x, t, h, solve_to=False):
+def eurler_step(f, x, t, h):
     """Single Euler step for any odrer ODE approximations
 
     Args:
@@ -94,8 +94,8 @@ def eurler_step(f, x, t, h, solve_to=False):
         float: approximation for next x
         float: next timestep 
     """
-    if not solve_to:
-        x = error_handle(f, x, t, h, deltat_max=0.5)
+
+    x = error_handle(f, x, t, h, deltat_max=0.5)
     
     dim = len(x)
     x = [t] + x 
@@ -171,6 +171,19 @@ def runge_kutta(f, x, t, h):
 
 
 def step_calc(t1, t2, h):
+    """Calucates number of steps needed for ODE solve. Will return final stepsize value if a remainder occurs
+
+    Args:
+        t1 (flaot): initial time
+        t2 (float): final time
+        h (float): stepsize
+
+    Returns:
+        int: number of steps for ODE solver
+        float: final step size value
+    """
+    
+    
     no_steps = int((t2 - t1)/h)
     final_h = ((t2 - t1)/h - int((t2 - t1)/h))*h
     if not math.isclose(final_h, 0):
@@ -195,7 +208,7 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         deltat_max (float, optional): Maximum step-size allowed for solution. Defaults to 0.5.
 
     Raises:
-        ValueError: h value is larger than deltat_max
+        ValueError: h is larger than deltat_max. t2 is larger than t1
         TypeError: x0 should be given as an integer/float or array-like
         SyntaxError: method type did not match predefined methods
 
@@ -206,7 +219,9 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         
         
     x0 = error_handle(f, x0, t1, h, deltat_max)
-    # add check to see if t1 > t2
+    
+    if t1 > t2:
+        raise ValueError("t2 must be greater than t1")
     
     
     no_steps, final_h = step_calc(t1, t2, h)          
@@ -224,14 +239,17 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
                 x_args = []
                 for j in range(len(x0)):
                     x_args.append(x[j][ind])
-                x_new, t_new = eurler_step(f, x_args, t[ind], h, solve_to=True)
+                    
+                x_new, t_new = eurler_step(f, x_args, t[ind], h)
+                
                 for k in range(len(x_new)):
                     x[k][ind + 1] = x_new[k]  
                 t[ind + 1] = t_new
+                
                 ind += 1   
             
             if final_h:
-                x_new, t_new = eurler_step(f, x_args, t[-2], final_h, solve_to=True)
+                x_new, t_new = eurler_step(f, x_args, t[-2], final_h)
                 
                 for k in range(len(x_new)):
                     x[k][-1] = x_new[k]
@@ -259,7 +277,6 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         case _:
             raise SyntaxError("Incorrect method type specified")
             
-
                     
     return x, t
 
@@ -273,7 +290,10 @@ def shooting(ode, x0, period, phase, method="Euler", h=0.01):
         period (float): Period guess 
         phase (function): Phase-condition. lambda p (= x1, ..., x_n): f(x_1, ..., x_n)
         method (string, optional): Method used to solve ODE. Defaults to "Euler"
-        h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01  
+        h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
+        
+    Raises:
+        RuntimeError: Root finder failed to converge  
 
     Returns:
         array: solution to ODE with found limit cycle conditions
@@ -305,8 +325,7 @@ def shooting(ode, x0, period, phase, method="Euler", h=0.01):
     if ier == 1:
         print(f"Root finder found the solution x={x0} after {info['nfev']} function calls")         
     else:
-        print(f"Root finder failed with error message: {msg}")
-        return 
+        raise RuntimeError(f"Root finder failed with error message: {msg}") 
     
     x, t = solve_to(ode, x0[0:-1], 0, period, 0.01, method)
     
