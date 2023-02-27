@@ -15,6 +15,7 @@ Notes:
 
 import matplotlib.pyplot as plt
 import numpy as np
+import math
 from scipy.optimize import fsolve
 
 
@@ -25,7 +26,7 @@ def error_handle(f, x0, t, h, deltat_max):
     
     if isinstance(x0, (int, float)):
         x0 = [x0]
-    elif isinstance(x0, (list, np.ndarray)):
+    elif isinstance(x0, (list, tuple, np.ndarray)):
         x0 = x0
     else:
         raise TypeError("x is incorrect data type")
@@ -56,7 +57,7 @@ def graph_format(x_label, y_label, title, filename):
     plt.ylabel(y_label)
     plt.legend()
     plt.savefig(f"results/{filename}") 
-    
+      
 
 def midpoint_method(f, x, t, h):
     """Explicit midpoint method for ODE approximations
@@ -167,6 +168,18 @@ def runge_kutta(f, x, t, h):
     x_new = x + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
     
     return x_new, t_new
+
+
+def step_calc(t1, t2, h):
+    no_steps = int((t2 - t1)/h)
+    final_h = ((t2 - t1)/h - int((t2 - t1)/h))*h
+    if not math.isclose(final_h, 0):
+        no_steps += 1
+    else:
+        final_h = 0
+        
+    return no_steps, final_h
+
     
   
 def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
@@ -193,28 +206,36 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         
         
     x0 = error_handle(f, x0, t1, h, deltat_max)
-            
-    no_steps = int((t2 - t1)/h)
-    t = np.zeros(no_steps)
-    t[0], t[-1] = t1, t2
+    # add check to see if t1 > t2
     
-    x = np.zeros((len(x0), len(t)))
+    
+    no_steps, final_h = step_calc(t1, t2, h)          
+    t = np.zeros(no_steps)
+    t[0] = t1
+    x = np.zeros((len(x0), no_steps))
     for ind, iv in enumerate(x0):
         x[ind][0] = iv
-    
     
     match method:
         
         case "Euler":
-            for i in range(len(t) - 1):
-                args = []
+            t_new, ind = 0, 0
+            while round(t_new + h, 3) < t2:
+                x_args = []
                 for j in range(len(x0)):
-                    args.append(x[j][i])
-                for j in range(len(x0)):
-                    x_new, t_new = eurler_step(f, args, t[i], h, solve_to=True)
-                    for k in range(len(x_new)):
-                        x[k][i+1] = x_new[k]
-                    t[i+1] = t_new
+                    x_args.append(x[j][ind])
+                x_new, t_new = eurler_step(f, x_args, t[ind], h, solve_to=True)
+                for k in range(len(x_new)):
+                    x[k][ind + 1] = x_new[k]  
+                t[ind + 1] = t_new
+                ind += 1   
+            
+            if final_h:
+                x_new, t_new = eurler_step(f, x_args, t[-2], final_h, solve_to=True)
+                
+                for k in range(len(x_new)):
+                    x[k][-1] = x_new[k]
+                t[-1] = t_new
                  
                           
         case "RK4First":
@@ -277,7 +298,7 @@ def shooting(ode, x0, period, phase, method="Euler", h=0.01):
         return np.append(f, p)
     
     
-    x0 = x0 + [period]    
+    x0 = x0 + [period]  
     x0, info, ier, msg = fsolve(root_ode, x0, full_output=True)
     period = x0[-1]
     
@@ -285,7 +306,7 @@ def shooting(ode, x0, period, phase, method="Euler", h=0.01):
         print(f"Root finder found the solution x={x0} after {info['nfev']} function calls")         
     else:
         print(f"Root finder failed with error message: {msg}")
-        return
+        return 
     
     x, t = solve_to(ode, x0[0:-1], 0, period, 0.01, method)
     
