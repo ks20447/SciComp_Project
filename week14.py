@@ -82,7 +82,7 @@ def week14_excersises():
     h = 0.01
 
     # Produces loglog plot for a set of stepsizes
-    steps = np.linspace(1e-6, 0.1, 50)
+    steps = np.logspace(-5, -2, 50)
     error_euler = euler(ode, x0, t1, t2, steps)
     error_runge = runge_kutta(ode, x0, t1, t2, steps)
     
