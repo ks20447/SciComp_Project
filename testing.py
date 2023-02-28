@@ -71,12 +71,12 @@ class NumericalMethodsTesting(unittest.TestCase):
         x1, t1 = nm.solve_to(ode_first, 1, 0, 1, 0.01, "Euler")
         self.assertEqual(x1[0][0], 1)
         self.assertEqual(t1[0], 0)
-        self.assertTrue(math.isclose(x1[0][-1], math.e, rel_tol=1e-1, abs_tol=0.0))
+        self.assertTrue(math.isclose(x1[0][-1], math.e, rel_tol=1e-9, abs_tol=1e-1))
         
-        x, t = nm.solve_to(ode_higher, [1, 1, 1], 0, 1, 0.01, "Euler")
+        x, t = nm.solve_to(ode_higher, [1, 1, 1], 0, 1, 0.01, "Midpoint")
         for x in x:
             self.assertEqual(x[0], 1)
-            self.assertTrue(math.isclose(x[-1], math.e, rel_tol=1e-1, abs_tol=0.0))
+            self.assertTrue(math.isclose(x[-1], math.e, rel_tol=1e-9, abs_tol=1e-1))
         self.assertEqual(t1[0], 0)
         
     
@@ -113,7 +113,7 @@ class NumericalMethodsTesting(unittest.TestCase):
         self.assertTrue(math.isclose(x[1][-1], x[1][-1]))
         
     
-    def test_solve_to_exceptions(self):
+    def test_shooting_exceptions(self):
         with self.assertRaises(ValueError) as exception_context:
             nm.shooting(ode, [1, 0], 6.3, phase, h=1)
         self.assertEqual(str(exception_context.exception),

@@ -20,6 +20,7 @@ from scipy.optimize import fsolve
 
 
 def error_handle(f, x0, t, h, deltat_max):
+    """Error handling used across several functions"""
     
     if h > deltat_max:
         raise ValueError("Given step-size exceeds maximum step-size")
@@ -72,8 +73,19 @@ def midpoint_method(f, x, t, h):
         float: approximation for next x 
     """
     
-    t_new = t + h
-    x_new = x + h*f(t + h/2, x + (h/2)*f(t, x))
+    
+    x = error_handle(f, x, t, h, deltat_max=0.5)
+    
+    dim = len(x)
+    x_new = np.zeros(dim)
+    
+    t_new = t + h       
+    
+    if dim > 1:
+        for i in range(dim):
+            x_new[i] = x[i] + h*f(t + h/2, *(x + (h/2)*f(t, *x)[i]))[i]
+    else:
+            x_new[0] = x[0] + h*f(t + h/2, x[0] + (h/2)*f(t, *x))
     
     return x_new, t_new
 
@@ -98,17 +110,15 @@ def eurler_step(f, x, t, h):
     x = error_handle(f, x, t, h, deltat_max=0.5)
     
     dim = len(x)
-    x = [t] + x 
     x_new = np.zeros(dim)
     
     t_new = t + h
 
-    if len(x) > 2:
+    if dim > 1:
         for i in range(dim):
-            x_new[i] = x[i + 1] + h*f(*x)[i]
+            x_new[i] = x[i] + h*f(t, *x)[i]
     else:
-        for i in range(dim):
-            x_new[i] = x[i + 1] + h*f(*x)
+            x_new[0] = x[0] + h*f(t, *x)
     
     return x_new, t_new
 
@@ -223,18 +233,18 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
     if t1 > t2:
         raise ValueError("t2 must be greater than t1")
     
-    
     no_steps, final_h = step_calc(t1, t2, h)          
     t = np.zeros(no_steps)
     t[0] = t1
     x = np.zeros((len(x0), no_steps))
     for ind, iv in enumerate(x0):
         x[ind][0] = iv
+        
+    t_new, ind = 0, 0
     
     match method:
         
         case "Euler":
-            t_new, ind = 0, 0
             while round(t_new + h, 3) < t2:
                 x_args = []
                 for j in range(len(x0)):
@@ -269,10 +279,25 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
                 x[0][i + 1], x[1][i + 1], t[i + 1] = runge_kutta_second(f, x[0][i], x[1][i], t[i], h)  
                                                         
         case "Midpoint":
-            x = np.zeros(len(t))
-            x[0] = x0
-            for i in range(len(t) - 1):
-                x[i + 1], t[i + 1] = midpoint_method(f, x[i], t[i], h)
+            while round(t_new + h, 3) < t2:
+                x_args = []
+                for j in range(len(x0)):
+                    x_args.append(x[j][ind])
+                    
+                x_new, t_new = midpoint_method(f, x_args, t[ind], h)
+                
+                for k in range(len(x_new)):
+                    x[k][ind + 1] = x_new[k]  
+                t[ind + 1] = t_new
+                
+                ind += 1   
+                
+            if final_h:
+                x_new, t_new = midpoint_method(f, x_args, t[-2], final_h)
+                
+                for k in range(len(x_new)):
+                    x[k][-1] = x_new[k]
+                t[-1] = t_new
                 
         case _:
             raise SyntaxError("Incorrect method type specified")
