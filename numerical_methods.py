@@ -231,74 +231,46 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         
     t_new, ind = 0, 0
     
-    match method:
+    while round(t_new + h, 3) < t2:
+        x_args = []
+        for j in range(len(x0)):
+            x_args.append(x[j][ind])
         
-        case "Euler":
-            while round(t_new + h, 3) < t2:
-                x_args = []
-                for j in range(len(x0)):
-                    x_args.append(x[j][ind])
-                    
+        match method:
+            
+            case "Euler": 
                 x_new, t_new = eurler_step(f, x_args, t[ind], h)
                 
-                for k in range(len(x_new)):
-                    x[k][ind + 1] = x_new[k]  
-                t[ind + 1] = t_new
-                
-                ind += 1   
-            
-            if final_h:
-                x_new, t_new = eurler_step(f, x_args, t[-2], final_h)
-                
-                for k in range(len(x_new)):
-                    x[k][-1] = x_new[k]
-                t[-1] = t_new
-                
-        case "RK4":
-            while round(t_new + h, 3) < t2:
-                x_args = []
-                for j in range(len(x0)):
-                    x_args.append(x[j][ind])
-                    
+            case "RK4":
                 x_new, t_new = runge_kutta(f, x_args, t[ind], h)
                 
-                for k in range(len(x_new)):
-                    x[k][ind + 1] = x_new[k]  
-                t[ind + 1] = t_new
-                
-                ind += 1   
-            
-            if final_h:
-                x_new, t_new = runge_kutta(f, x_args, t[-2], final_h)
-                
-                for k in range(len(x_new)):
-                    x[k][-1] = x_new[k]
-                t[-1] = t_new 
-                                                        
-        case "Midpoint":
-            while round(t_new + h, 3) < t2:
-                x_args = []
-                for j in range(len(x0)):
-                    x_args.append(x[j][ind])
-                    
+            case "Midpoint":
                 x_new, t_new = midpoint_method(f, x_args, t[ind], h)
                 
-                for k in range(len(x_new)):
-                    x[k][ind + 1] = x_new[k]  
-                t[ind + 1] = t_new
-                
-                ind += 1   
-                
-            if final_h:
-                x_new, t_new = midpoint_method(f, x_args, t[-2], final_h)
-                
-                for k in range(len(x_new)):
-                    x[k][-1] = x_new[k]
-                t[-1] = t_new
-                
-        case _:
-            raise SyntaxError("Incorrect method type specified")
+            case _:
+                raise SyntaxError("Incorrect method type specified")
+        
+        for k in range(len(x_new)):
+            x[k][ind + 1] = x_new[k]  
+        t[ind + 1] = t_new
+        
+        ind += 1   
+    
+    if final_h:
+        match method:
             
+            case "Euler": 
+                x_new, t_new = eurler_step(f, x_args, t[ind], h)
+                
+            case "RK4":
+                x_new, t_new = runge_kutta(f, x_args, t[ind], h)
+                
+            case "Midpoint":
+                x_new, t_new = midpoint_method(f, x_args, t[ind], h)
+        
+        for k in range(len(x_new)):
+            x[k][-1] = x_new[k]
+        t[-1] = t_new     
                     
     return x, t
 
