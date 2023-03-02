@@ -61,7 +61,7 @@ def graph_format(x_label, y_label, title, filename):
       
 
 def midpoint_method(f, x, t, h):
-    """Explicit midpoint method for ODE approximations
+    """Explicit midpoint method for any order ODE approximations
 
     Args:
         f (function): ODE function being solved
@@ -85,22 +85,19 @@ def midpoint_method(f, x, t, h):
         for i in range(dim):
             x_new[i] = x[i] + h*f(t + h/2, *(x + (h/2)*f(t, *x)[i]))[i]
     else:
-            x_new[0] = x[0] + h*f(t + h/2, x[0] + (h/2)*f(t, *x))
+        x_new[0] = x[0] + h*f(t + h/2, x[0] + (h/2)*f(t, *x))
     
     return x_new, t_new
 
 
 def eurler_step(f, x, t, h):
-    """Single Euler step for any odrer ODE approximations
+    """Single Euler step for any order ODE approximations
 
     Args:
         f (function): ODE function being approximated
         x (float): current x approximation
         t (float): current timestep 
         h (float): stepsize
-        
-    Raises:
-        TypeError: x should be given as an integer/float or array-like
 
     Returns:
         float: approximation for next x
@@ -118,65 +115,57 @@ def eurler_step(f, x, t, h):
         for i in range(dim):
             x_new[i] = x[i] + h*f(t, *x)[i]
     else:
-            x_new[0] = x[0] + h*f(t, *x)
+        x_new[0] = x[0] + h*f(t, *x)
     
     return x_new, t_new
 
 
-def runge_kutta_second(f, x1, x2, t, h):
-    """Runga-Kutta 4th order method for ODE approximations
-
-    Args:
-        f (function): ODE function being solved
-        x (float): current x approximation
-        t (float): current timestep
-        h (float): stepsize
-
-    Returns:
-        float: approximation for next x
-        float: next timestep
-    """
-    
-    t_new = t + h
-    
-    # Runge-Kutta coefficients
-    k11 = f(t, x1, x2)[0]
-    k21 = f(t, x1, x2)[1]
-    k12 = f(t + (h/2), x1 + h*(k11/2), x2 + h*(k21/2))[0]
-    k22 = f(t + (h/2), x1 + h*(k11/2), x2 + h*(k21/2))[1]
-    k13 = f(t + (h/2), x1 + h*(k12/2), x2 + h*(k22/2))[0]
-    k23 = f(t + (h/2), x1 + h*(k12/2), x2 + h*(k22/2))[1]
-    k14 = f(t + h, x1 + h*k13, x2 + h*k23)[0]
-    k24 = f(t + h, x1 + h*k13, x2 + h*k23)[1]
-    
-    x1_new = x1 + (h/6)*(k11 + 2*k12 + 2*k13 + k14)
-    x2_new = x2 + (h/6)*(k21 + 2*k22 + 2*k23 + k24)
-    
-    
-    return x1_new, x2_new, t_new
-
-
 def runge_kutta(f, x, t, h):
-    """Runga-Kutta 4th order method for ODE approximations
+    """Runge-Kutta 4th order method for any order ODE approximations
+
     Args:
-        f (function): ODE function being solved
+        f (function): ODE function being approximated
         x (float): current x approximation
-        t (float): current timestep
+        t (float): current timestep 
         h (float): stepsize
+
     Returns:
         float: approximation for next x
+        float: next timestep 
     """
+    
+    
+    x = error_handle(f, x, t, h, deltat_max=0.5)
     
     t_new = t + h
     
-    # Runge-Kutta coefficients
-    k1 = f(t, x)
-    k2 = f(t + h/2, x + h*k1/2)
-    k3 = f(t + h/2, x + h*k2/2)
-    k4 = f(t + h, x + h*k3)
+    dim = len(x)
+    x_new = np.zeros(dim)
+    k = np.zeros((dim, 4))
+    args = np.zeros(dim)
     
-    x_new = x + (h/6)*(k1 + 2*k2 + 2*k3 + k4)
-    
+    if dim > 1:
+        for i in range(dim):
+            args[i] = x[i]
+            k[i][0] = f(t, *args)[i]
+            args[i] = x[i] + h*(k[i][0]/2)
+            k[i][1] = f(t + (h/2), *args)[i] 
+            args[i] = x[i] + h*(k[i][1]/2)
+            k[i][2] = f(t + (h/2), *args)[i]
+            args[i] = x[i] + h*(k[i][2])
+            k[i][-1] = f(t, *args)[i]  
+            x_new[i] =  x[i] + (h/6)*(k[i][0] + 2*k[i][1] + 2*k[i][2] + k[i][3]) 
+    else:
+        args[0] = x[0]
+        k[0][0] = f(t, *args)
+        args[0] = x[0] + h*(k[0][0]/2)
+        k[0][1] = f(t + (h/2), *args) 
+        args[0] = x[0] + h*(k[0][1]/2)
+        k[0][2] = f(t + (h/2), *args)
+        args[0] = x[0] + h*(k[0][2])
+        k[0][-1] = f(t, *args) 
+        x_new[0] =  x[0] + (h/6)*(k[0][0] + 2*k[0][1] + 2*k[0][2] + k[0][3])
+
     return x_new, t_new
 
 
@@ -214,7 +203,7 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         t1 (float): Start time
         t2 (float): End time
         h (float): Step-size
-        method (string): {'Euler', 'RK4First', 'RK4Second', 'Midpoint'} Method of solving ODE
+        method (string): {'Euler', 'RK4', 'Midpoint'} Method of solving ODE
         deltat_max (float, optional): Maximum step-size allowed for solution. Defaults to 0.5.
 
     Raises:
@@ -264,19 +253,27 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
                 for k in range(len(x_new)):
                     x[k][-1] = x_new[k]
                 t[-1] = t_new
-                 
-                          
-        case "RK4First":
-            x = np.zeros(len(t))
-            x[0] = x0[0]
-            for i in range(len(t) - 1):
-                x[i + 1], t[i + 1] = runge_kutta(f, x[i], t[i], h)
-
-        case "RK4Second":
-            x = np.zeros((2, len(t)))
-            x[0][0], x[1][0] = x0[0], x0[1]
-            for i in range(len(t) - 1):
-                x[0][i + 1], x[1][i + 1], t[i + 1] = runge_kutta_second(f, x[0][i], x[1][i], t[i], h)  
+                
+        case "RK4":
+            while round(t_new + h, 3) < t2:
+                x_args = []
+                for j in range(len(x0)):
+                    x_args.append(x[j][ind])
+                    
+                x_new, t_new = runge_kutta(f, x_args, t[ind], h)
+                
+                for k in range(len(x_new)):
+                    x[k][ind + 1] = x_new[k]  
+                t[ind + 1] = t_new
+                
+                ind += 1   
+            
+            if final_h:
+                x_new, t_new = runge_kutta(f, x_args, t[-2], final_h)
+                
+                for k in range(len(x_new)):
+                    x[k][-1] = x_new[k]
+                t[-1] = t_new 
                                                         
         case "Midpoint":
             while round(t_new + h, 3) < t2:
