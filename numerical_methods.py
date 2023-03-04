@@ -8,10 +8,16 @@ numerical_methods.py library to be used for Scientific Computing Coursework
 All commits to be pushed to "working" branch before merging to "master" branch
 
 To be completed:
-4) (Optional) Add another numerical integration method
+Implement numerical continuation, including natural paramter and pseudo-arclength
+(Optional) Add another numerical integration method
 
 Notes:
+Can clean up code by finding solution to indexing a single value returned from a function
+Perhaps can move if final_h statement to shorten code further
+Add examples to documentation
+Comment
 """
+
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -38,7 +44,6 @@ def error_handle(f, x0, t, h, deltat_max):
         raise TypeError(f"Function and initial condition dimesions do not match")
         
     return x0
-    
 
 
 def graph_format(x_label, y_label, title, filename):
@@ -103,6 +108,7 @@ def eurler_step(f, x, t, h):
         float: approximation for next x
         float: next timestep 
     """
+
 
     x = error_handle(f, x, t, h, deltat_max=0.5)
     
@@ -181,21 +187,19 @@ def step_calc(t1, t2, h):
         int: number of steps for ODE solver
         float: final step size value
     """
-    
-    
-    no_steps = int((t2 - t1)/h)
-    final_h = ((t2 - t1)/h - no_steps)*h
-    if not math.isclose(final_h, 0, rel_tol=1e-6):
-        no_steps += 1
-    else:
+
+    final_h = ((t2 - t1)/h - int((t2- t1)/h))*h
+
+    if math.isclose(final_h, 0, abs_tol=1e-7):
         final_h = 0
         
-    return no_steps, final_h
+    return final_h
 
     
   
 def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
-    """Numerically solves given ODE(s) from t1 to t2, in step-size h, with intitial condition(s) x0
+    """Numerically solves given ODE(s) from t1 to t2, in step-size h, with intitial condition(s) x0. 
+    Second order and above ODE's must be converted to the equivalent system of first order ODE's.
 
     Args:
         f (function): ODE system to be solved. lambda t, x_1, ..., x_n : f(x_1, ..., x_n)
@@ -214,6 +218,21 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
     Returns:
         array: approximation of ODE solution
         array: timestpes of ODE solution
+        
+    Example
+    -------
+    >>> def ode_second(t, x, y):
+    ...    dxdt = x
+    ...    dydt = y
+    ... return dxdt, dydt
+    >>> x0 = [1, 1]
+    >>> t1, t2 = 0, 1.1
+    >>> h = 0.5
+    >>> x, t = nm.solve_to(ode_second, x0, t1, t2, h, "Euler")
+    >>> print(x, t)
+    [[1.    1.5   2.25  2.475]
+    [1.    1.5   2.25  2.475]] 
+    [0.  0.5 1.  1.1]
     """
         
         
@@ -221,17 +240,17 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
     
     if t1 > t2:
         raise ValueError("t2 must be greater than t1")
-    
-    no_steps, final_h = step_calc(t1, t2, h)          
+     
+    no_steps = int((t2 - t1)/h) + 1        
     t = np.zeros(no_steps)
     t[0] = t1
-    x = np.zeros((len(x0), no_steps))
+    x = np.zeros((len(x0), len(t)))
     for ind, iv in enumerate(x0):
         x[ind][0] = iv
         
-    t_new, ind = 0, 0
+    ind = 0
     
-    while round(t_new + h, 3) < t2:
+    while ind < no_steps - 1:
         x_args = []
         for j in range(len(x0)):
             x_args.append(x[j][ind])
@@ -255,18 +274,28 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         t[ind + 1] = t_new
         
         ind += 1   
+        
+    final_h = step_calc(t1, t2, h) 
     
     if final_h:
+        
+        t.resize((no_steps + 1))
+        x = np.concatenate((x, np.zeros((x.shape[0], 1))), axis=1)
+        
+        x_args = []
+        for j in range(len(x0)):
+            x_args.append(x[j][ind])
+            
         match method:
             
             case "Euler": 
-                x_new, t_new = eurler_step(f, x_args, t[ind], h)
+                x_new, t_new = eurler_step(f, x_args, t[ind], final_h)
                 
             case "RK4":
-                x_new, t_new = runge_kutta(f, x_args, t[ind], h)
+                x_new, t_new = runge_kutta(f, x_args, t[ind], final_h)
                 
             case "Midpoint":
-                x_new, t_new = midpoint_method(f, x_args, t[ind], h)
+                x_new, t_new = midpoint_method(f, x_args, t[ind], final_h)
         
         for k in range(len(x_new)):
             x[k][-1] = x_new[k]
@@ -295,8 +324,8 @@ def shooting(ode, x0, period, phase, method="Euler", h=0.01):
         array: conditions of limit cycle (as seen from output)
     """
     
-    x0 = error_handle(ode, x0, 0, h, deltat_max=0.5)
-        
+    
+    x0 = error_handle(ode, x0, 0, h, deltat_max=0.5)  
         
     def root_ode(u):
         x0 = u[0:-1]
@@ -310,7 +339,6 @@ def shooting(ode, x0, period, phase, method="Euler", h=0.01):
         p = np.array(phase(x0))
         
         return np.append(f, p)
-    
     
     x0 = x0 + [period]  
     x0, info, ier, msg = fsolve(root_ode, x0, full_output=True)

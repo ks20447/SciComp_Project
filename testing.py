@@ -14,6 +14,7 @@ Notes:
 
 
 import numerical_methods as nm
+import numpy as np
 import math
 import unittest
 
@@ -101,7 +102,7 @@ class NumericalMethodsTesting(unittest.TestCase):
       
         
     def test_shooting_success(self):
-        x, t, x0 = nm.shooting(ode, [1, 0], 6.3, phase)
+        x, t, x0 = nm.shooting(ode, [1, 0], 6.299, phase)
         self.assertTrue(math.isclose(x[0][-1], x[0][-1]))
         self.assertTrue(math.isclose(x[1][-1], x[1][-1]))
         

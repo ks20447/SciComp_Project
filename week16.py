@@ -1,4 +1,5 @@
 import numerical_methods as nm
+import nm_old
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -18,9 +19,19 @@ def hopf_phase(p, sigma, beta):
 sigma = -1
 beta = 1
 u0 = [1, 0]
-t1, t2 = 0, 6.3
+t1, t2 = 0, 6.301
 phase = lambda p: hopf_phase(p, sigma, beta)
 u, t, u0 = nm.shooting(lambda t, u1, u2: hopf_normal_form(t, u1, u2 , sigma, beta), u0, t2, phase)
+
+
+
+
+
+
+
+
+
+
 
 
 
