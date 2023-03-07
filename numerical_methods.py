@@ -1,27 +1,40 @@
 """
+NUMERCIAL METHODS
+-----------------
+
 Created: 23/01/2023
 
-Author: ks20447 (Adam Morris)
+Author: ks20447@bristol.ac.uk (Adam Morris)
 
 numerical_methods.py library to be used for Scientific Computing Coursework
 
 All commits to be pushed to "working" branch before merging to "master" branch
 
+POTENTIAL OVERHAUL - CHANGE ODE INTERFACES TO USE ARRAY SYSTEM RATHER THAN UNPACKING:
+
+>>> def ode(t, y):
+...     dydt = np.zeros_like(y)
+...     dydt[0] = y[0]
+...     dydt[1] = y[1] 
+...     return dydt
+    
+solutions can then be calculated in array form:
+>>> y[i+1, :] = y[i, :] + h*ode(t[i], y[i, :])
+
 To be completed:
-Implement numerical continuation, including natural paramter and pseudo-arclength
+Implement numerical continuation, including natural paramter and pseudo-arclength;
 (Optional) Add another numerical integration method
 
 Notes:
-Can clean up code by finding solution to indexing a single value returned from a function
-Perhaps can move if final_h statement to shorten code further
-Add examples to documentation
+Can clean up code by finding solution to indexing a single value returned from a function;
+Perhaps can move if final_h statement to shorten code further;
+Add examples to documentation;
 Comment
 """
 
 
 import matplotlib.pyplot as plt
 import numpy as np
-import math
 from scipy.optimize import fsolve
 
 
@@ -172,29 +185,7 @@ def runge_kutta(f, x, t, h):
         k[0][-1] = f(t, *args) 
         x_new[0] =  x[0] + (h/6)*(k[0][0] + 2*k[0][1] + 2*k[0][2] + k[0][3])
 
-    return x_new, t_new
-
-
-def step_calc(t1, t2, h):
-    """Calucates number of steps needed for ODE solve. Will return final stepsize value if a remainder occurs
-
-    Args:
-        t1 (flaot): initial time
-        t2 (float): final time
-        h (float): stepsize
-
-    Returns:
-        int: number of steps for ODE solver
-        float: final step size value
-    """
-
-    final_h = ((t2 - t1)/h - int((t2- t1)/h))*h
-
-    if math.isclose(final_h, 0, abs_tol=1e-7):
-        final_h = 0
-        
-    return final_h
-
+    return x_new, t_new 
     
   
 def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
@@ -275,11 +266,11 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         
         ind += 1   
         
-    final_h = step_calc(t1, t2, h) 
+    final_h = ((t2 - t1)/h - int((t2- t1)/h))*h 
     
     if final_h:
         
-        t.resize((no_steps + 1))
+        t.resize((no_steps + 1), refcheck=False)
         x = np.concatenate((x, np.zeros((x.shape[0], 1))), axis=1)
         
         x_args = []
