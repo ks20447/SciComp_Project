@@ -29,3 +29,13 @@ u, t, u0 = nm.shooting(lambda t, u1, u2: hopf_normal_form(t, u1, u2 , sigma, bet
 
 
 
+
+
+
+
+
+
+
+
+
+
