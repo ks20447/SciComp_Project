@@ -11,15 +11,11 @@ numerical_methods.py library to be used for Scientific Computing Coursework
 All commits to be pushed to "working" branch before merging to "master" branch
 
 To be completed:
-Update documentation;
-Update testing;
 Implement numerical continuation, including natural paramter and pseudo-arclength;
 (Optional) Add another numerical integration method
 
 Notes:
 Perhaps can move if final_h statement to shorten code further;
-Add examples to documentation;
-Comment
 """
 
 
@@ -147,12 +143,13 @@ def runge_kutta(f, x, t, h):
     
   
 def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
-    """Numerically solves given ODE(s) from t1 to t2, in step-size h, with intitial condition(s) x0. 
+    """Numerically solves given ODE from t1 to t2, in step-size h, with intitial condition(s) x0. 
     Second order and above ODE's must be converted to the equivalent system of first order ODE's.
+    In the case that the time-span does not exatly divide by h, a final additional step will be calculated using the remainder.
 
     Args:
-        f (function): ODE system to be solved. lambda t, x_1, ..., x_n : f(x_1, ..., x_n)
-        x0 (float, array-like): Initial condition x_0 = a, or vector x = [a_1, ..., a_n] 
+        f (function): ODE system to be solved.
+        x0 (float, array-like): Initial condition(s) 
         t1 (float): Start time
         t2 (float): End time
         h (float): Step-size
@@ -160,16 +157,24 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         deltat_max (float, optional): Maximum step-size allowed for solution. Defaults to 0.5.
 
     Raises:
-        ValueError: h is larger than deltat_max. t2 is larger than t1
+        ValueError: h is larger than deltat_max. t2 is larger than t1. Function and initial condition dimesions do not macth
         TypeError: x0 should be given as an integer/float or array-like
         SyntaxError: method type did not match predefined methods
 
     Returns:
-        array: approximation of ODE solution
+        array: approximation of ODE solution(s)
         array: timestpes of ODE solution
         
     Example
     -------
+    >>> def ode_second_order(t, u):
+    ...     x, y = u
+    ...     dudt = [x, y]
+    ... return dudt
+    >>> x, t = solve_to(ode_second_order, [1, 1], 0, 1, 0.1, "Euler")
+    >>> print(x[:, 0], t)
+    [1.         1.1        1.21       1.331      1.4641     1.61051
+    1.771561   1.9487171  2.14358881 2.35794769 2.59374246] [0.  0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1. ]
     """
         
         
@@ -206,7 +211,7 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         
     final_h = ((t2 - t1)/h - int((t2- t1)/h))*h 
     
-    if final_h:
+    if final_h: # In the case that t2 exactly divides by h, we don't want to execute this part
         
         t = np.append(t, 0)
         x = np.concatenate((x, np.zeros((1, dim))))
@@ -227,13 +232,13 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
 
 
 def shooting(ode, x0, period, phase, method="Euler", h=0.01):
-    """Numerical shooting to solve for ODE limit cycles
+    """Numerical shooting to solve for ODE limit cycles. Uses solve_to to produce ODE solutions 
 
     Args:
-        ode (function): ODE to be solved. lambda t, x_1, ..., x_n : f(x_1, ..., x_n) 
-        x0 (float, array-like): Initial condition guess x_0 = a, or vector x = [a_1, ..., a_n]
+        ode (function): ODE to be solved  
+        x0 (float, array-like): Initial condition guess 
         period (float): Initial guess for ODE limit cycle period time    
-        phase (function): Phase condition. lambda p (= x1, ..., x_n): f(x_1, ..., x_n)
+        phase (function): Phase condition
         method (string, optional): Method used to solve ODE. Defaults to "Euler"
         h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
 
@@ -243,7 +248,23 @@ def shooting(ode, x0, period, phase, method="Euler", h=0.01):
     Returns:
         array: solution to ODE with found limit cycle conditions
         array: timesteps of ODE solution
-        array: conditions of limit cycle (as seen from output)
+        array: initial conditions of limit cycle (as seen from output)
+        
+    Example
+    -------
+    >>> def hopf_normal_form(t, u, sigma, beta):
+    ...     u1, u2 = u
+    ...     dudt = [beta*u1 - u2 + sigma*u1*(u1**2 + u2**2), u1 + beta*u2 + sigma*u2*(u1**2 + u2**2)]
+    ...     return dudt
+    >>> def hopf_phase(p, sigma, beta):
+    ...     u1, u2 = p
+    ...     p = beta*u1 - u2 + sigma*u1*(u1**2 + u2**2)
+    ...     return p 
+    >>> sigma, beta = -1, 1
+    >>> hopf = lambda t, u: hopf_normal_form(t, u, sigma, beta)
+    >>> phase = lambda p: hopf_phase(p, sigma, beta)
+    >>> u, t, u0 = nm.shooting(hopf, [1, 0], 6.3, phase)
+    Root finder found the solution x = [ 1.00247384 -0.00499102], period t = 6.283080704684171s after 9 function calls
     """
     
     
