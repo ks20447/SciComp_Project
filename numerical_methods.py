@@ -35,18 +35,20 @@ def error_handle(f, x0, t, h, deltat_max):
         raise ValueError("Given step-size exceeds maximum step-size")
     
     if isinstance(x0, (int, float)):
-        x0 = [x0]
-    elif isinstance(x0, (list, tuple, np.ndarray)):
         x0 = x0
+        dim = 1
+    elif isinstance(x0, (list, tuple, np.ndarray)):
+        x0 = np.asarray(x0)
+        dim = len(x0)
     else:
         raise TypeError("x is incorrect data type")
     
     try:
         f(t, x0)
-    except ValueError:
-        raise TypeError(f"Function and initial condition dimesions do not match")
+    except (TypeError, ValueError):
+        raise ValueError(f"Function and initial condition dimesions do not match")
         
-    return x0
+    return x0, dim
 
 
 def graph_format(x_label, y_label, title, filename):
@@ -82,13 +84,11 @@ def midpoint_method(f, x, t, h):
     """
     
     
-    x = error_handle(f, x, t, h, deltat_max=0.5)
-    
-    dim = len(x)
+    x, dim = error_handle(f, x, t, h, deltat_max=0.5)
     x_new = np.zeros(dim)
     
     t_new = t + h
-    x_new = x + h*f(t_new + h/2, x + h/2*f(t, x))       
+    x_new = x + h*np.asarray(f(t_new + h/2, x + h/2*np.asarray(f(t, x))))       
     
     return x_new, t_new
 
@@ -108,13 +108,11 @@ def eurler_step(f, x, t, h):
     """
 
 
-    x = error_handle(f, x, t, h, deltat_max=0.5)
-    
-    dim = len(x)
+    x, dim = error_handle(f, x, t, h, deltat_max=0.5)
     x_new = np.zeros(dim)
     
     t_new = t + h
-    x_new = x + h*f(t_new, x)
+    x_new = x + h*np.asarray(f(t_new, x))
 
     return x_new, t_new
 
@@ -134,17 +132,15 @@ def runge_kutta(f, x, t, h):
     """
     
     
-    x = error_handle(f, x, t, h, deltat_max=0.5)
+    x, dim = error_handle(f, x, t, h, deltat_max=0.5)
     
     t_new = t + h
-    
-    dim = len(x)
     x_new = np.zeros(dim)
 
-    k1 = h * f(t, x)
-    k2 = h * f(t + h/2, x + k1/2)
-    k3 = h * f(t + h/2, x + k2/2)
-    k4 = h * f(t + h, x + k3)
+    k1 = h * np.asarray(f(t, x))
+    k2 = h * np.asarray(f(t + h/2, x + k1/2))
+    k3 = h * np.asarray(f(t + h/2, x + k2/2))
+    k4 = h * np.asarray(f(t + h, x + k3))
     x_new = x + (1/6)*(k1 + 2*k2 + 2*k3 + k4)
     
     return x_new, t_new 
@@ -174,22 +170,10 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         
     Example
     -------
-    >>> def ode_second(t, x, y):
-    ...    dxdt = x
-    ...    dydt = y
-    ... return dxdt, dydt
-    >>> x0 = [1, 1]
-    >>> t1, t2 = 0, 1.1
-    >>> h = 0.5
-    >>> x, t = nm.solve_to(ode_second, x0, t1, t2, h, "Euler")
-    >>> print(x, t)
-    [[1.    1.5   2.25  2.475]
-    [1.    1.5   2.25  2.475]] 
-    [0.  0.5 1.  1.1]
     """
         
         
-    x0 = error_handle(f, x0, t1, h, deltat_max)
+    x0, dim = error_handle(f, x0, t1, h, deltat_max)
     
     if t1 > t2:
         raise ValueError("t2 must be greater than t1")
@@ -197,7 +181,7 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
     no_steps = int((t2 - t1)/h) + 1        
     t = np.zeros(no_steps)
     t[0] = t1
-    x = np.zeros((len(t), len(x0)))
+    x = np.zeros((len(t), dim))
     x[0, :] = x0
         
     ind = 0
@@ -225,7 +209,7 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
     if final_h:
         
         t = np.append(t, 0)
-        x = np.concatenate((x, np.zeros((1, len(x0)))))
+        x = np.concatenate((x, np.zeros((1, dim))))
             
         match method:
             
@@ -263,13 +247,13 @@ def shooting(ode, x0, period, phase, method="Euler", h=0.01):
     """
     
     
-    x0 = error_handle(ode, x0, 0, h, deltat_max=0.5)  
+    x0, dim = error_handle(ode, x0, 0, h, deltat_max=0.5)  
         
     def root_ode(u):
         x0 = u[0:-1]
         t = u[-1]
         sols, time = solve_to(ode, x0, 0, t, h, method)
-        f = np.zeros(len(x0))
+        f = np.zeros(dim)
         
         f = sols[0, :] - sols[-1, :]
         
