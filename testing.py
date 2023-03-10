@@ -139,7 +139,7 @@ class NumericalMethodsTesting(unittest.TestCase):
       
         
     def test_shooting_success(self):
-        x, t, x0 = nm.shooting(hopf, [1, 0], 6.3, phase)
+        x, t, x0, period = nm.shooting(hopf, [1, 0], 6.3, phase)
         for x in np.transpose(x):
             self.assertAlmostEqual(x[0], x[-1])
         

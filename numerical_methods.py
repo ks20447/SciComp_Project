@@ -142,7 +142,7 @@ def runge_kutta(f, x, t, h):
     return x_new, t_new 
     
   
-def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
+def solve_to(f, x0, t1: float, t2: float, h: float, method: str, deltat_max=0.5):
     """Numerically solves given ODE from t1 to t2, in step-size h, with intitial condition(s) x0. 
     Second order and above ODE's must be converted to the equivalent system of first order ODE's.
     In the case that the time-span does not exatly divide by h, a final additional step will be calculated using the remainder.
@@ -153,7 +153,7 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         t1 (float): Start time
         t2 (float): End time
         h (float): Step-size
-        method (string): {'Euler', 'RK4', 'Midpoint'} Method of solving ODE
+        method (str): {'Euler', 'RK4', 'Midpoint'} Method of solving ODE
         deltat_max (float, optional): Maximum step-size allowed for solution. Defaults to 0.5.
 
     Raises:
@@ -167,11 +167,12 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
         
     Example
     -------
+    >>> import numerical_methods as nm
     >>> def ode_second_order(t, u):
     ...     x, y = u
     ...     dudt = [x, y]
     ... return dudt
-    >>> x, t = solve_to(ode_second_order, [1, 1], 0, 1, 0.1, "Euler")
+    >>> x, t = nm.solve_to(ode_second_order, [1, 1], 0, 1, 0.1, "Euler")
     >>> print(x[:, 0], t)
     [1.         1.1        1.21       1.331      1.4641     1.61051
     1.771561   1.9487171  2.14358881 2.35794769 2.59374246] [0.  0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1. ]
@@ -231,7 +232,7 @@ def solve_to(f, x0, t1, t2, h, method, deltat_max=0.5):
     return x, t
 
 
-def shooting(ode, x0, period, phase, method="Euler", h=0.01):
+def shooting(ode, x0, period: float, phase, method="Euler", h=0.01):
     """Numerical shooting to solve for ODE limit cycles. Uses solve_to to produce ODE solutions 
 
     Args:
@@ -239,7 +240,7 @@ def shooting(ode, x0, period, phase, method="Euler", h=0.01):
         x0 (float, array-like): Initial condition guess 
         period (float): Initial guess for ODE limit cycle period time    
         phase (function): Phase condition
-        method (string, optional): Method used to solve ODE. Defaults to "Euler"
+        method (str, optional): Method used to solve ODE as given by solve_to. Defaults to "Euler"
         h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
 
     Raises:
@@ -249,9 +250,11 @@ def shooting(ode, x0, period, phase, method="Euler", h=0.01):
         array: solution to ODE with found limit cycle conditions
         array: timesteps of ODE solution
         array: initial conditions of limit cycle (as seen from output)
+        float: period of limit cycle (as seen from output)
         
     Example
     -------
+    >>> import numerical_methods as nm
     >>> def hopf_normal_form(t, u, sigma, beta):
     ...     u1, u2 = u
     ...     dudt = [beta*u1 - u2 + sigma*u1*(u1**2 + u2**2), u1 + beta*u2 + sigma*u2*(u1**2 + u2**2)]
@@ -263,7 +266,7 @@ def shooting(ode, x0, period, phase, method="Euler", h=0.01):
     >>> sigma, beta = -1, 1
     >>> hopf = lambda t, u: hopf_normal_form(t, u, sigma, beta)
     >>> phase = lambda p: hopf_phase(p, sigma, beta)
-    >>> u, t, u0 = nm.shooting(hopf, [1, 0], 6.3, phase)
+    >>> u, t, u0, period = nm.shooting(hopf, [1, 0], 6.3, phase)
     Root finder found the solution x = [ 1.00247384 -0.00499102], period t = 6.283080704684171s after 9 function calls
     """
     
@@ -273,7 +276,7 @@ def shooting(ode, x0, period, phase, method="Euler", h=0.01):
     def root_ode(u):
         x0 = u[0:-1]
         t = u[-1]
-        sols, time = solve_to(ode, x0, 0, t, h, method)
+        sols = solve_to(ode, x0, 0, t, h, method)[0]
         f = np.zeros(dim)
         
         f = sols[0, :] - sols[-1, :]
@@ -292,4 +295,63 @@ def shooting(ode, x0, period, phase, method="Euler", h=0.01):
     
     x, t = solve_to(ode, x0[0:-1], 0, x0[-1], 0.01, method)
     
-    return x, t, x0
+    return x, t, x0[0:-1], x0[-1]
+
+
+def continuation(ode, x0, period: float, phase, p0: float, p1: float, num_steps: int, method="Euler", h=0.01):
+    """Numerical continuation investigating single parameter affect on ODE 
+
+    Args:
+        ode (function): ODE to be solved
+        x0 (float, array-like): Initial state vector
+        period (float): Limit cycle period guess
+        phase (function): Phase condition
+        p0 (float): Initial parameter value
+        p1 (float): Final parameter value
+        num_steps (int): Number of linearly placed steps to take between p0 and p1
+        method (str, optional): Method used to solve ODE as given by solve_to. Defaults to "Euler"
+        h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
+
+    Returns:
+        array: array of parameter values
+        array: array of state vector solutions
+        
+    Example
+    -------
+    import numerical_methods as nm
+    >>> def hopf_normal_form(t, u, beta):
+    ...     sigma = -1
+    ...     u1, u2 = u
+    ...     dudt = np.array([beta*u1 - u2 + sigma*u1*(u1**2 + u2**2), u1 + beta*u2 + sigma*u2*(u1**2 + u2**2)])
+    ...     return dudt
+    >>> def hopf_phase(p, beta):
+    ...     sigma = -1
+    ...     u1, u2 = p
+    ...     p = beta*u1 - u2 + sigma*u1*(u1**2 + u2**2)
+    ...     return p 
+    >>> x0 = [1.41594778, -0.0070194] 
+    >>> period = 6.28308
+    >>> p, x = nm.continuation(hopf_normal_form, x0, period, hopf_phase, 2, -1, 11)
+    >>> print(p, x[:, 0])
+    [ 2.   1.7  1.4  1.1  0.8  0.5  0.2 -0.1 -0.4 -0.7 -1. ] 
+    [ 1.41594778e+00  1.30572653e+00  1.18529974e+00  1.05116564e+00    8.97197290e-01  7.10617176e-01  
+    4.52758525e-01 -1.60753498e-16  3.93514178e-39  9.31616179e-61  5.74885115e-78]
+    """
+    
+    ode_p = lambda t, u: ode(t, u, p0)
+    phase_p = lambda p: phase(p, p0)
+    
+    x0, dim = error_handle(ode_p, x0, period, h, deltat_max=0.5)
+    
+    p = np.linspace(p0, p1, num_steps)
+    x = np.zeros((len(p), dim))
+    
+    try:
+        for ind, p0 in enumerate(p):
+            ode_p = lambda t, u: ode(t, u, p0)
+            x_sol, t_sol, x0, period = shooting(ode_p, x0, period, phase_p, method, h)
+            x[ind, :] = x0
+    except RuntimeError:
+        return p[0:ind], x[0:ind]
+        
+    return p, x 

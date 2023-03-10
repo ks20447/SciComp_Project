@@ -20,7 +20,7 @@ beta = 1
 u0 = np.array([1, 0])
 t1, t2 = 0, 6.3
 phase = lambda p: hopf_phase(p, sigma, beta)
-u, t, u0 = nm.shooting(lambda t, u: hopf_normal_form(t, u, sigma, beta), u0, t2, phase)
+u, t, u0, period = nm.shooting(lambda t, u: hopf_normal_form(t, u, sigma, beta), u0, t2, phase)
 
 
 
