@@ -299,7 +299,7 @@ def shooting(ode, x0, period: float, phase, method="Euler", h=0.01):
 
 
 def natural_parameter(ode, x0, period: float, phase, p0: float, p1: float, num_steps: int, method="Euler", h=0.01):
-    """Numerical continuation investigating single parameter affect on ODE 
+    """Natural parameter continuation investigating single parameter affect on ODE 
 
     Args:
         ode (function): ODE to be solved
@@ -356,7 +356,48 @@ def natural_parameter(ode, x0, period: float, phase, p0: float, p1: float, num_s
     return p, x 
 
 
-def pseudo_arclength(ode, states, periods, phase, parameters, num_steps, method="Euler", h=0.01):     
+def pseudo_arclength(ode, states, periods, phase, parameters, num_steps: float, method="Euler", h=0.01):
+    """Pseudo-arclength continuation investigating single parameter affect on ODE 
+
+    Args:
+        ode (function): ODE to be solved
+        states (array-like): Two initial state vectors
+        periods (array-like): Both limit cycle period guesses
+        phase (function): Phase condition
+        parameters (array-like): Two initial parameter values
+        num_steps (int): Number of pseudo-arclength operations to take
+        method (str, optional): Method used to solve ODE as given by solve_to. Defaults to "Euler"
+        h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
+
+    Returns:
+        array: array of solutions. [x0 ... xn period parameter]
+        
+    Example
+    -------
+    >>> def hopf_normal_form(t, u, beta):
+    ...     sigma = -1
+    ...     u1, u2 = u
+    ...     dudt = np.array([beta*u1 - u2 + sigma*u1*(u1**2 + u2**2), u1 + beta*u2 + sigma*u2*(u1**2 + u2**2)])
+    ...     return dudt
+    >>> def hopf_phase(p, beta):
+    ...     sigma = -1
+    ...     u1, u2 = p
+    ...     p = beta*u1 - u2 + sigma*u1*(u1**2 + u2**2)
+    ...     return p 
+    >>> x0 = [1.41594778, -0.0070194] 
+    >>> t0 = 6.28308
+    >>> p0 = 2 
+    >>> x1 = [1.38018573, -0.00684505]
+    >>> t1 = 6.28308
+    >>> p1 = 1.9
+    >>> v = nm.pseudo_arclength(hopf_normal_form, [x0, x1], [t0, t1], hopf_phase, [p0, p1], 5)    
+    >>> print(v)
+    [[ 1.41594778 -0.0070194   6.28308     2.        ]
+    [ 1.38018573 -0.00684505  6.28308     1.9       ]
+    [ 1.34347207 -0.00666584  6.2830807   1.80034032]
+    [ 1.30598713 -0.00648261  6.2830807   1.70096479]
+    [ 1.26748393 -0.00629417  6.2830807   1.60197335]]
+    """ 
     
     ode_arc = lambda t, u: ode(t, u, parameters[0])
     phase_arc = lambda p: phase(p, parameters[0]) 
@@ -399,7 +440,7 @@ def pseudo_arclength(ode, states, periods, phase, parameters, num_steps, method=
             
     except ValueError:
         v = v[0:i+2]
-        print(f"Root finding stopped at p = {v[-1, -1]}")
+        print(f"Root finding stopped after {i + 2} steps at p = {v[-1, -1]}")
         
     return v
     
