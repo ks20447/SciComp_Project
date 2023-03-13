@@ -298,7 +298,7 @@ def shooting(ode, x0, period: float, phase, method="Euler", h=0.01):
     return x, t, x0[0:-1], x0[-1]
 
 
-def continuation(ode, x0, period: float, phase, p0: float, p1: float, num_steps: int, method="Euler", h=0.01):
+def natural_parameter(ode, x0, period: float, phase, p0: float, p1: float, num_steps: int, method="Euler", h=0.01):
     """Numerical continuation investigating single parameter affect on ODE 
 
     Args:
@@ -348,10 +348,58 @@ def continuation(ode, x0, period: float, phase, p0: float, p1: float, num_steps:
     
     try:
         for ind, p0 in enumerate(p):
-            ode_p = lambda t, u: ode(t, u, p0)
             x_sol, t_sol, x0, period = shooting(ode_p, x0, period, phase_p, method, h)
             x[ind, :] = x0
     except RuntimeError:
         return p[0:ind], x[0:ind]
         
     return p, x 
+
+
+def pseudo_arclength(ode, states, periods, phase, parameters, num_steps, method="Euler", h=0.01):     
+    
+    ode_arc = lambda t, u: ode(t, u, parameters[0])
+    phase_arc = lambda p: phase(p, parameters[0]) 
+    
+    x0, dim = error_handle(ode_arc, states[0], periods[0], h, deltat_max=0.5)
+    x1, dim = error_handle(ode_arc, states[1], periods[1], h, deltat_max=0.5)
+    
+    t0 = periods[0]
+    t1 = periods[1]
+    
+    p0 = parameters[0]
+    p1 = parameters[1]
+    
+    v0 = np.append(x0, [t0, p0])
+    v1 = np.append(x1, [t1, p1])
+    v = np.zeros((num_steps, dim + 2))
+    v[0, :], v[1, :] = v0, v1
+    
+    try:
+        for i in range(num_steps - 2):
+            secant = v[i+1] - v[i]
+            pred =  v[i+1] + secant
+            
+            phase_arc = lambda p: phase(p, pred[-1]) 
+            ode_arc = lambda t, u: ode(t, u, pred[-1])
+            
+            def ode_root(u):
+                x0 = u[0:2]
+                t = u[2]
+                sols = solve_to(ode_arc, x0, 0, t, h=0.01, method="Euler")[0]
+                f = np.zeros(dim)
+                
+                f = sols[0, :] - sols[-1, :]
+                p = phase_arc(u[0:2])
+                arc = np.dot(u - pred, secant)
+                
+                return np.append(f, [p, arc])
+            
+            v[2 + i, :], info, ier, msg = fsolve(ode_root, v[1 + i, :], full_output=True)    
+            
+    except ValueError:
+        v = v[0:i+2]
+        print(f"Root finding stopped at p = {v[-1, -1]}")
+        
+    return v
+    
