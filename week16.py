@@ -3,10 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def hopf_normal_form(t, u1, u2, sigma, beta):
-    du1dt = beta*u1 - u2 + sigma*u1*(u1**2 + u2**2)
-    du2dt = u1 + beta*u2 + sigma*u2*(u1**2 + u2**2)
-    return du1dt, du2dt
+def hopf_normal_form(t, u, sigma, beta):
+    u1, u2 = u
+    dudt = np.array([beta*u1 - u2 + sigma*u1*(u1**2 + u2**2), u1 + beta*u2 + sigma*u2*(u1**2 + u2**2)])
+    return dudt
 
 
 def hopf_phase(p, sigma, beta):
@@ -17,10 +17,10 @@ def hopf_phase(p, sigma, beta):
 
 sigma = -1
 beta = 1
-u0 = [1, 0]
+u0 = np.array([1, 0])
 t1, t2 = 0, 6.3
 phase = lambda p: hopf_phase(p, sigma, beta)
-u, t, u0 = nm.shooting(lambda t, u1, u2: hopf_normal_form(t, u1, u2 , sigma, beta), u0, t2, phase)
+u, t, u0, period = nm.shooting(lambda t, u: hopf_normal_form(t, u, sigma, beta), u0, t2, phase)
 
 
 
