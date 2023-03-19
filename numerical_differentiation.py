@@ -22,12 +22,41 @@ import numpy as np
 
 
 class Boundary_Condition:
+    """Boundary Condition (BC) object to be used with finite_differnce function
+    """
+
 
     def __init__(self, name : str, value) -> None:
+        """Initialise Boundary Condition (BC) object with given name and value
+
+        Args:
+            name (str): {"Dirichlet", "Neumann", "Robin"} Type of BC
+            value (float, array-like): Value of BC. If "Robin" type BC is defined, must be array-like of two values
+            
+        EXAMPLE
+        -------
+        >>> bc_left = Boundary_Condition("Dirichlet", 0.0)  
+        >>> bc_right = Boundary_Condition("Robin", [1.0, 1.0])
+        """
+        
+        
         self.name = name
         self.value = np.array(value)
             
     def calc_values(self, dx):
+        """Calculates appropriate values to be used in finite difference matrix construction depending on BC
+
+        Args:
+            dx (float): Discretization step-size
+
+        Raises:
+            SyntaxError: Incorrect BC type specified
+
+        Returns:
+            int: factor to determine size of finite difference matricies
+        """
+        
+        
         match self.name:
             
             case "Dirichlet":
@@ -57,7 +86,34 @@ class Boundary_Condition:
         return n
 
 
-def finite_difference(source, a, b, bc_left, bc_right, n):
+def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition, bc_right : Boundary_Condition, n : int):
+    """Finite difference method to solve 2nd order PDE with (linear) source term, two boundary conditions (bc) in n steps
+
+    Args:
+        source (function): source term of PDE. Function that returns a single value (can be dependant on x)
+        a (float): x value that the left bc is evaluated at
+        b (float): x value that the right bc is evaluated at
+        bc_left (object): Initial (left) boundary conition
+        bc_right (object): Final (Right) boundary conition
+        n (int): Number of steps
+
+    Returns:
+        array: linearly spaced grid values from a to b
+        array: solution to PDE
+        
+    EXAMPLE
+    -------
+    >>> def source(x):
+    ...     f = 1
+    ...     return f
+    >>> bc_left = nd.Boundary_Condition("Dirichlet", 0.0)
+    >>> bc_right = nd.Boundary_Condition("Dirichlet", 1.0)
+    >>> a, b = 0, 1
+    >>> x, u = nd.finite_difference(source, a, b, bc_left, bc_right, 10)
+    [0.  0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1. ]
+    [0.    0.145 0.28  0.405 0.52  0.625 0.72  0.805 0.88  0.945 1.   ]
+    """
+    
     
     grid = np.linspace(a, b, n+1)
     dx = (b - a) / n
