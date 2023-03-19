@@ -53,6 +53,15 @@ class Boundary_Condition:
 
         Returns:
             int: factor to determine size of finite difference matricies
+            
+        EXAMPLE
+        -------
+        >>> bc_left = Boundary_Condition("Dirichlet", 0.0)  
+        >>> bc_right = Boundary_Condition("Robin", [1.0, 1.0])
+        >>> n = 10
+        >>> n += bc_left.calc_values(dx) + bc_right.calc_values(dx) - 1 # Forumla to determine size of matrices depending on BC types
+        >>> print(n)
+        11
         """
         
         
@@ -86,7 +95,7 @@ class Boundary_Condition:
 
 
 def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition, bc_right : Boundary_Condition, n : int):
-    """Finite difference method to solve 2nd order PDE with (linear) source term, two boundary conditions (bc) in n steps
+    """Finite difference method to solve 2nd order PDE with source term, two boundary conditions (bc) in n steps
 
     Args:
         source (function): source term of PDE. Function that returns a single value (can be dependant on x)
@@ -102,7 +111,7 @@ def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition
         
     EXAMPLE
     -------
-    >>> def source(x):
+    >>> def source(x, u):
     ...     f = 1
     ...     return f
     >>> bc_left = nd.Boundary_Condition("Dirichlet", 0.0)
@@ -119,9 +128,8 @@ def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition
     
     u = np.zeros(n + 1)
     q = np.zeros(n + 1)
-    # q[:] = (dx**2)*source(grid[:])
     
-    n += bc_left.calc_values(dx) + bc_right.calc_values(dx) - 1
+    n += bc_left.calc_values(dx) + bc_right.calc_values(dx) - 1 # Forumla to determine size of matrices depending on BC types 
     
     a_dd = np.zeros((n, n))
     b_dd = np.zeros(n)
