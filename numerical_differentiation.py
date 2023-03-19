@@ -11,7 +11,6 @@ numerical_differntiation.py library to be used for Scientific Computing Coursewo
 All commits to be pushed to "working" branch before merging to "master" branch
 
 To be completed:
-Add non-linear soruce term implementation to finite difference
 
 Notes:
 Two Neumann conditions gives singular matrix, unsure how to correct this
@@ -120,7 +119,7 @@ def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition
     
     u = np.zeros(n + 1)
     q = np.zeros(n + 1)
-    q[0::] = (dx**2)*source(grid[0::])
+    # q[:] = (dx**2)*source(grid[:])
     
     n += bc_left.calc_values(dx) + bc_right.calc_values(dx) - 1
     
@@ -144,11 +143,21 @@ def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition
     
     start = bc_left.sol_bound
     end = bc_right.sol_bound
+        
+    u_old = np.zeros_like(u)
     
-    if end:
-        u[start:-end] = np.linalg.solve(a_dd, -b_dd - q[start:-end])
-    else:
-        u[start::] = np.linalg.solve(a_dd, -b_dd - q[start::])
-   
+    itr = 0
+        
+    while np.max(np.abs(u - u_old)) > 1e-6 and itr < 100:
+        u_old[:] = u[:]
+        q[:] = (dx**2)*source(grid[:], u_old[:])
+        
+        if end:
+            u[start:-end] = np.linalg.solve(a_dd, -b_dd - q[start:-end])
+        else:
+            u[start::] = np.linalg.solve(a_dd, -b_dd - q[start::])
+            
+        itr += 1
+        
 
     return grid, u
