@@ -6,7 +6,7 @@ import numpy as np
 
 plt.rcParams.update({"text.usetex": True, 'font.size': 14}) # Use Latex fonts for all matplotlib.pyplot plots
 
-def week18_excersises():
+def week19_excersises():
 
     def source_linear(x, u):
         f = 1
@@ -37,4 +37,4 @@ def week18_excersises():
     plt.show()
 
 
-week18_excersises()    
+week19_excersises()    
