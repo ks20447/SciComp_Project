@@ -281,28 +281,37 @@ def implicit_methods(source, a, b, d_coef, bc_left, bc_right, ic, n, dt, t_final
     
     start = bc_left.sol_bound
     end = bc_right.sol_bound
+
     
     match method:
         
         case "Euler":
+            
+            a = identity - c*a_dd
     
             if end:
                 for i in range(num_time - 1):
-                    u[i + 1, start:-end] = np.linalg.solve(identity - c*a_dd, u[i, start:-end] + c*b_dd)
+                    b = u[i, start:-end] + c*b_dd + c*source(grid[start:-end], time[i])
+                    u[i + 1, start:-end] = np.linalg.solve(a, b)
                     
             else:
                 for i in range(num_time - 1):
-                    u[i + 1, start::] = np.linalg.solve(identity - c*a_dd, u[i, start::] + c*b_dd)
+                    b = u[i, start::] + c*b_dd + c*source(grid[start::], time[i])
+                    u[i + 1, start::] = np.linalg.solve(a, b)
 
         case "Crank-Nicolson":
             
+            a = identity - (c/2)*a_dd
+            
             if end:
                 for i in range(num_time - 1):
-                    u[i + 1, start:-end] = np.linalg.solve(identity - (c/2)*a_dd, 
-                                            (identity + (c/2)*a_dd) @ u[i, start:-end] + c*b_dd)
+                    b = ((identity + (c/2)*a_dd) @ u[i, start:-end]) + c*b_dd + c*source(grid[start:-end], time[i])
+                    u[i + 1, start:-end] = np.linalg.solve(a, b)
             else:
                 for i in range(num_time - 1):
+                    b = ((identity + (c/2)*a_dd) @ u[i, start::]) + c*b_dd + c*source(grid[start::], time[i])
                     u[i + 1, start::] = np.linalg.solve(identity - (c/2)*a_dd, 
                                             (identity + (c/2)*a_dd) @ u[i, start::] + c*b_dd)
+            
             
     return grid, time, u
