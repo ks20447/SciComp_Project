@@ -231,31 +231,49 @@ def explicit_methods(source, a, b, d_coef, bc_left, bc_right, ic, n, t_final, me
     
     pde = lambda x, t, u: (d_coef/(dx**2))*(a_dd @ u + b_dd) + source(x, t, u)
     
+    
     match method:
         
         case "Euler":
             if end:
+                
+                sol_grid = grid[start:-end]
+                
                 for i in range(num_time - 1):
-                    u[i + 1, start:-end] = u[i, start:-end] + dt*pde(grid[start:-end], time[i], u[i, start:-end])
+                    sol_u = u[i, start:-end]
+                    u[i + 1, start:-end] = sol_u + dt*pde(sol_grid, time[i], sol_u)
             else:
+                
+                sol_grid = grid[start::]
+                
                 for i in range(num_time - 1):
-                    u[i + 1, start::] = u[i, start::] + dt*pde(grid[start::], time[i], u[i, start::])
+                    sol_u = u[i, start::]
+                    u[i + 1, start::] = sol_u + dt*pde(sol_grid, time[i], sol_u)
+
                             
         case "RK4":
             if end:
+                
+                sol_grid = grid[start:-end]
+                
                 for i in range(num_time - 1):
-                        k1 = pde(grid[start:-end], time[i], u[i, start:-end])
-                        k2 = pde(grid[start:-end], time[i], u[i, start:-end] + dt*k1/2)
-                        k3 = pde(grid[start:-end], time[i], u[i, start:-end] + dt*k2/2)
-                        k4 = pde(grid[start:-end], time[i], u[i, start:-end] + dt*k3)
-                        u[i + 1, start:-end] = u[i, start:-end] + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
+                    sol_u = u[i, start:-end]
+                    k1 = pde(sol_grid, time[i], sol_u)
+                    k2 = pde(sol_grid, time[i], sol_u + dt*k1/2)
+                    k3 = pde(sol_grid, time[i], sol_u + dt*k2/2)
+                    k4 = pde(sol_grid, time[i], sol_u + dt*k3)
+                    u[i + 1, start:-end] = sol_u + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
             else:
+                
+                sol_grid = grid[start:-end]
+                
                 for i in range(num_time - 1):
-                        k1 = pde(u[i, start::], grid[start::])
-                        k2 = pde(u[i, start::] + dt*k1/2, grid[start::])
-                        k3 = pde(u[i, start::] + dt*k2/2, grid[start::])
-                        k4 = pde(u[i, start::] + dt*k3, grid[start::])
-                        u[i + 1, start::] = u[i, start::] + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
+                    sol_u = u[i, start::]
+                    k1 = pde(sol_grid, time[i], sol_u)
+                    k2 = pde(sol_grid, time[i], sol_u + dt*k1/2)
+                    k3 = pde(sol_grid, time[i], sol_u + dt*k2/2)
+                    k4 = pde(sol_grid, time[i], sol_u + dt*k3)
+                    u[i + 1, start::] = sol_u + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
                         
     return grid, time, u
     
