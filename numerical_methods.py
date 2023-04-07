@@ -11,8 +11,6 @@ numerical_methods.py library to be used for Scientific Computing Coursework
 All commits to be pushed to "working" branch before merging to "master" branch
 
 To be completed:
-Implement numerical continuation, including natural paramter and pseudo-arclength;
-(Optional) Add another numerical integration method
 
 Notes:
 Perhaps can move if final_h statement to shorten code further;
@@ -25,11 +23,30 @@ from scipy.optimize import fsolve
 
 
 def error_handle(f, x0, t, h, deltat_max):
-    """Error handling used across several functions"""
+    """Error handling used across several functions
+
+    Args:
+        f (function): ODE being checked
+        x0 (float, array_like): Initial conditions
+        t (float): Time value (often initial time value)
+        h (float): Step-size
+        deltat_max (float): Maximum step size
+
+    Raises:
+        ValueError: Step size is too large
+        TypeError: Initial conditions are incorrect data type 
+        ValueError: Inconsistent dimensionality of ODE and IC
+
+    Returns:
+        float, array-like: Initial conditions
+        int: Dimension of ODE
+    """
     
+    # Checks that the provided step size is sufficiently small
     if h > deltat_max:
         raise ValueError("Given step-size exceeds maximum step-size")
     
+    # Checks that provided initial conditions are the correct data type
     if isinstance(x0, (int, float)):
         x0 = x0
         dim = 1
@@ -39,6 +56,7 @@ def error_handle(f, x0, t, h, deltat_max):
     else:
         raise TypeError("x is incorrect data type")
     
+    # Checks the initial conditions watch the provided ODE
     try:
         f(t, x0)
     except (TypeError, ValueError):
@@ -47,14 +65,14 @@ def error_handle(f, x0, t, h, deltat_max):
     return x0, dim
 
 
-def graph_format(x_label, y_label, title, filename):
+def graph_format(x_label : str, y_label : str, title : str, filename=False):
     """Matplotlib.pyplot plot formatting
 
     Args:
         x_label (string): x-axis label
         y_label (string): y-axis label
         title (string): title of plot
-        filename (string): name given to saved .png plot
+        filename (string, optional): name given to saved .png plot
     """
     
     
@@ -63,7 +81,8 @@ def graph_format(x_label, y_label, title, filename):
     plt.xlabel(x_label)
     plt.ylabel(y_label)
     plt.legend()
-    plt.savefig(f"results/{filename}") 
+    if filename:
+        plt.savefig(f"results/{filename}") 
       
 
 def midpoint_method(f, x, t, h):
@@ -181,6 +200,7 @@ def solve_to(f, x0, t1: float, t2: float, h: float, method: str, deltat_max=0.5)
         
     x0, dim = error_handle(f, x0, t1, h, deltat_max)
     
+    # Ensures that the initial time is before the final time
     if t1 > t2:
         raise ValueError("t2 must be greater than t1")
      
