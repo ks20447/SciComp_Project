@@ -11,7 +11,6 @@ numerical_differntiation.py library to be used for Scientific Computing Coursewo
 All commits to be pushed to "working" branch before merging to "master" branch
 
 To be completed:
-Method of lines
 
 Notes:
 Two Neumann conditions gives singular matrix - this is a mathematical issue to do with constant of intergration
@@ -27,7 +26,7 @@ class Boundary_Condition:
     """Boundary Condition (BC) object to be used with finite_differnce function
     """
 
-    def __init__(self, name : str, value) -> None:
+    def __init__(self, name : str, value : float) -> None:
         """Initialise Boundary Condition (BC) object with given name and value
 
         Args:
@@ -42,7 +41,7 @@ class Boundary_Condition:
         
         
         self.name = name
-        self.value = np.array(value)
+        self.value = value
             
     def calc_values(self, dx):
         """Calculates appropriate values to be used in finite difference matrix construction depending on BC

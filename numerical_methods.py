@@ -67,22 +67,29 @@ def error_handle(f, x0, t, h, args, deltat_max):
     return x0, dim
 
 
-def graph_format(x_label : str, y_label : str, title : str, filename=False):
+def graph_format(x_label : str, y_label : str, title : str, ax=False, filename=False):
     """Matplotlib.pyplot plot formatting
 
     Args:
         x_label (string): x-axis label
         y_label (string): y-axis label
         title (string): title of plot
+        ax (axis.Axis): axis object for use with subplots
         filename (string, optional): name given to saved .png plot
     """
     
-    
-    plt.grid()
-    plt.title(title)
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
-    plt.legend()
+    if not ax:
+        plt.grid()
+        plt.title(title)
+        plt.xlabel(x_label)
+        plt.ylabel(y_label)
+        plt.legend()
+    else:
+        ax.grid()
+        ax.set_title(title)
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+        ax.legend()
     if filename:
         plt.savefig(f"results/{filename}") 
       
