@@ -189,7 +189,7 @@ def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition
     return grid, u
 
 
-def method_of_lines(source, a, b, d_coef, bc_left, bc_right, ic, n, t_final):
+def explicit_methods(source, a, b, d_coef, bc_left, bc_right, ic, n, t_final, method):
     """Method of lines using Runge-Kutta 4th order to solve (linear) diffusion equation from time 0 to time t_final, in n spacial steps
 
     Args:
@@ -219,7 +219,7 @@ def method_of_lines(source, a, b, d_coef, bc_left, bc_right, ic, n, t_final):
     time = dt * np.arange(num_time)
     
     u = np.zeros((num_time, n + 1))
-    u[0, :] = ic(grid[1:-1])
+    u[0, :] = ic(grid, u)
     
     a_dd, b_dd = construct_a_b_matricies(grid, bc_left, bc_right)
     
@@ -229,22 +229,107 @@ def method_of_lines(source, a, b, d_coef, bc_left, bc_right, ic, n, t_final):
     start = bc_left.sol_bound
     end = bc_right.sol_bound
     
-    pde = lambda u, x: (d_coef/(dx**2))*(a_dd @ u + b_dd) + source(x, u)
+    pde = lambda x, t, u: (d_coef/(dx**2))*(a_dd @ u + b_dd) + source(x, t, u)
     
-    if end:
-        for i in range(num_time - 1):
-                k1 = pde(u[i, start:-end], grid[start:-end])
-                k2 = pde(u[i, start:-end] + dt*k1/2, grid[start:-end])
-                k3 = pde(u[i, start:-end] + dt*k2/2, grid[start:-end])
-                k4 = pde(u[i, start:-end] + dt*k3, grid[start:-end])
-                u[i + 1, start:-end] = u[i, start:-end] + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
-    else:
-        for i in range(num_time - 1):
-                k1 = pde(u[i, start::], grid[start::])
-                k2 = pde(u[i, start::] + dt*k1/2, grid[start::])
-                k3 = pde(u[i, start::] + dt*k2/2, grid[start::])
-                k4 = pde(u[i, start::] + dt*k3, grid[start::])
-                u[i + 1, start::] = u[i, start::] + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
     
+    match method:
+        
+        case "Euler":
+            if end:
+                
+                sol_grid = grid[start:-end]
+                
+                for i in range(num_time - 1):
+                    sol_u = u[i, start:-end]
+                    u[i + 1, start:-end] = sol_u + dt*pde(sol_grid, time[i], sol_u)
+            else:
+                
+                sol_grid = grid[start::]
+                
+                for i in range(num_time - 1):
+                    sol_u = u[i, start::]
+                    u[i + 1, start::] = sol_u + dt*pde(sol_grid, time[i], sol_u)
+
+                            
+        case "RK4":
+            if end:
+                
+                sol_grid = grid[start:-end]
+                
+                for i in range(num_time - 1):
+                    sol_u = u[i, start:-end]
+                    k1 = pde(sol_grid, time[i], sol_u)
+                    k2 = pde(sol_grid, time[i], sol_u + dt*k1/2)
+                    k3 = pde(sol_grid, time[i], sol_u + dt*k2/2)
+                    k4 = pde(sol_grid, time[i], sol_u + dt*k3)
+                    u[i + 1, start:-end] = sol_u + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
+            else:
+                
+                sol_grid = grid[start:-end]
+                
+                for i in range(num_time - 1):
+                    sol_u = u[i, start::]
+                    k1 = pde(sol_grid, time[i], sol_u)
+                    k2 = pde(sol_grid, time[i], sol_u + dt*k1/2)
+                    k3 = pde(sol_grid, time[i], sol_u + dt*k2/2)
+                    k4 = pde(sol_grid, time[i], sol_u + dt*k3)
+                    u[i + 1, start::] = sol_u + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
+                        
     return grid, time, u
     
+    
+def implicit_methods(source, a, b, d_coef, bc_left, bc_right, ic, n, dt, t_final, method):
+    
+    grid = np.linspace(a, b, n+1)
+    dx = (b - a) / n
+    
+    c = (dt*d_coef)/(dx**2)
+    
+    num_time = ceil(t_final / dt)
+    time = dt * np.arange(num_time)
+    
+    u = np.zeros((num_time, n + 1))
+    u[0, :] = ic(grid, u)
+    
+    a_dd, b_dd = construct_a_b_matricies(grid, bc_left, bc_right)
+    identity = np.identity(len(a_dd))
+    
+    u[:, 0] = bc_left.u_bound
+    u[:, -1] = bc_right.u_bound
+    
+    start = bc_left.sol_bound
+    end = bc_right.sol_bound
+
+    
+    match method:
+        
+        case "Euler":
+            
+            a = identity - c*a_dd
+    
+            if end:
+                for i in range(num_time - 1):
+                    b = u[i, start:-end] + c*b_dd + c*source(grid[start:-end], time[i])
+                    u[i + 1, start:-end] = np.linalg.solve(a, b)
+                    
+            else:
+                for i in range(num_time - 1):
+                    b = u[i, start::] + c*b_dd + c*source(grid[start::], time[i])
+                    u[i + 1, start::] = np.linalg.solve(a, b)
+
+        case "Crank-Nicolson":
+            
+            a = identity - (c/2)*a_dd
+            
+            if end:
+                for i in range(num_time - 1):
+                    b = ((identity + (c/2)*a_dd) @ u[i, start:-end]) + c*b_dd + c*source(grid[start:-end], time[i])
+                    u[i + 1, start:-end] = np.linalg.solve(a, b)
+            else:
+                for i in range(num_time - 1):
+                    b = ((identity + (c/2)*a_dd) @ u[i, start::]) + c*b_dd + c*source(grid[start::], time[i])
+                    u[i + 1, start::] = np.linalg.solve(identity - (c/2)*a_dd, 
+                                            (identity + (c/2)*a_dd) @ u[i, start::] + c*b_dd)
+            
+            
+    return grid, time, u

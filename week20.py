@@ -13,16 +13,16 @@ def week20_excersises():
     bc_left = nd.Boundary_Condition("Dirichlet", 0.0)
     bc_right = nd.Boundary_Condition("Dirichlet", 0.0)
 
-    def bratu(x, u):
+    def bratu(x, t, u):
         f = np.exp(2*u)
         return f
 
     a, b = 0, 1
     d_coef = 1
     t_final = 1
-    ic = lambda x: 0
+    ic = lambda x, u: 0
 
-    grid, time, u = nd.method_of_lines(bratu, a, b, d_coef, bc_left, bc_right, ic, 20, t_final)
+    grid, time, u = nd.explicit_methods(bratu, a, b, d_coef, bc_left, bc_right, ic, 20, t_final, "RK4")
 
     fig, ax = plt.subplots()
     ax.set_ylim(0, 0.25)
