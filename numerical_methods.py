@@ -118,7 +118,7 @@ def midpoint_method(f, x, t, h, args=None):
     return x_new, t_new
 
 
-def eurler_step(f, x, t, h, args=None):
+def eurler_method(f, x, t, h, args=None):
     """Single Euler step for any order ODE approximations
 
     Args:
@@ -173,7 +173,7 @@ def runge_kutta(f, x, t, h, args=None):
     return x_new, t_new 
     
   
-def solve_to(f, x0, t1: float, t2: float, h: float, method: str, args=None, deltat_max=0.5):
+def solve_to(f, x0, t1: float, t2: float, h: float, method, args=None, deltat_max=0.5):
     """Numerically solves given ODE from t1 to t2, in step-size h, with intitial condition(s) x0. 
     Second order and above ODE's must be converted to the equivalent system of first order ODE's.
     In the case that the time-span does not exatly divide by h, a final additional step will be calculated using the remainder.
@@ -185,7 +185,7 @@ def solve_to(f, x0, t1: float, t2: float, h: float, method: str, args=None, delt
         t1 (float): Start time
         t2 (float): End time
         h (float): Step-size
-        method (str): {'Euler', 'RK4', 'Midpoint'} Method of solving ODE
+        method (function): Function method for solving ODE {.euler, .midpoint, .runge_kutta}
         args (float, array-like): Additional ODE arguments
         deltat_max (float, optional): Maximum step-size allowed for solution. Defaults to 0.5.
 
@@ -227,21 +227,8 @@ def solve_to(f, x0, t1: float, t2: float, h: float, method: str, args=None, delt
     ind = 0
     
     while ind < no_steps - 1:
-        
-        match method:
             
-            case "Euler": 
-                x[ind + 1, :], t[ind + 1] = eurler_step(f, x[ind, :], t[ind], h, args)
-                
-            case "RK4":
-                x[ind + 1, :], t[ind + 1] = runge_kutta(f, x[ind, :], t[ind], h, args)
-                
-            case "Midpoint":
-                x[ind + 1, :], t[ind + 1] = midpoint_method(f, x[ind, :], t[ind], h, args)
-                
-            case _:
-                raise SyntaxError("Incorrect method type specified")
-        
+        x[ind + 1, :], t[ind + 1] = method(f, x[ind, :], t[ind], h, args)
         ind += 1   
         
     final_h = ((t2 - t1)/h - int((t2- t1)/h))*h 
@@ -250,23 +237,14 @@ def solve_to(f, x0, t1: float, t2: float, h: float, method: str, args=None, delt
         
         t = np.append(t, 0)
         x = np.concatenate((x, np.zeros((1, dim))))
-            
-        match method:
-            
-            case "Euler": 
-                x[ind + 1, :], t[ind + 1] = eurler_step(f, x[ind, :], t[ind], final_h, args)
-                
-            case "RK4":
-                x[ind + 1, :], t[ind + 1] = runge_kutta(f, x[ind, :], t[ind], final_h, args)
-                
-            case "Midpoint":
-                x[ind + 1, :], t[ind + 1] = midpoint_method(f, x[ind, :], t[ind], final_h, args)
+        
+        x[ind + 1, :], t[ind + 1] = method(f, x[ind, :], t[ind], final_h, args)
                     
                     
     return x, t
 
 
-def shooting(ode, x0, period: float, phase, args=None, method="Euler", h=0.01):
+def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0.01):
     """Numerical shooting to solve for ODE limit cycles. Uses solve_to to produce ODE solutions 
 
     Args:
@@ -275,7 +253,7 @@ def shooting(ode, x0, period: float, phase, args=None, method="Euler", h=0.01):
         period (float): Initial guess for ODE limit cycle period time    
         phase (function): Phase condition
         args (float, array-like): Additional ODE arguments
-        method (str, optional): Method used to solve ODE as given by solve_to. Defaults to "Euler"
+        method (function, optional): Function method for solving ODE {.euler_method, .midpoint_method, .runge_kutta}. Defaults to .euler_method
         h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
 
     Raises:
@@ -333,7 +311,7 @@ def shooting(ode, x0, period: float, phase, args=None, method="Euler", h=0.01):
     return x, t, x0[0:-1], x0[-1]
 
 
-def natural_parameter(ode, x0, period: float, phase, p0: float, p1: float, num_steps: int, args=None, method="Euler", h=0.01):
+def natural_parameter(ode, x0, period: float, phase, p0: float, p1: float, num_steps: int, args=None, method=eurler_method, h=0.01):
     """Natural parameter continuation investigating single parameter affect on ODE 
 
     Args:
@@ -345,7 +323,7 @@ def natural_parameter(ode, x0, period: float, phase, p0: float, p1: float, num_s
         p1 (float): Final parameter value
         num_steps (int): Number of linearly placed steps to take between p0 and p1
         args (float, array-like): Additional ODE arguments        
-        method (str, optional): Method used to solve ODE as given by solve_to. Defaults to "Euler"
+        method (function, optional): Function method for solving ODE {.euler_method, .midpoint_method, .runge_kutta}. Defaults to .euler_method
         h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
 
     Returns:
@@ -392,7 +370,7 @@ def natural_parameter(ode, x0, period: float, phase, p0: float, p1: float, num_s
     return p, x 
 
 
-def pseudo_arclength(ode, states, periods, phase, parameters, num_steps: float, args=None, method="Euler", h=0.01):
+def pseudo_arclength(ode, states, periods, phase, parameters, num_steps: float, args=None, method=eurler_method, h=0.01):
     """Pseudo-arclength continuation investigating single parameter affect on ODE 
 
     Args:
@@ -403,7 +381,7 @@ def pseudo_arclength(ode, states, periods, phase, parameters, num_steps: float, 
         parameters (array-like): Two initial parameter values
         num_steps (int): Number of pseudo-arclength operations to take
         args (float, array-like): Additional ODE arguments
-        method (str, optional): Method used to solve ODE as given by solve_to. Defaults to "Euler"
+        method (function, optional): Function method for solving ODE {.euler_method, .midpoint_method, .runge_kutta}. Defaults to .euler_method
         h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
 
     Returns:
