@@ -11,9 +11,9 @@ numerical_methods.py library to be used for Scientific Computing Coursework
 All commits to be pushed to "working" branch before merging to "master" branch
 
 To be completed:
+Check all documentation
 
 Notes:
-Perhaps can move if final_h statement to shorten code further;
 Remove requirment for users to need to specify no additional arguments 
 """
 
@@ -58,13 +58,18 @@ def error_handle(f, x0, t, h, args, deltat_max):
     else:
         raise TypeError("x is incorrect data type")
     
+    if isinstance(args, (int, float, list, tuple, np.ndarray)):
+        args = args
+    else:
+        raise TypeError("args is incorrect data type")
+    
     # Checks the initial conditions watch the provided ODE
     try:
         f(t, x0, args)
     except (TypeError, ValueError):
         raise ValueError(f"Function initial condition and/or argument dimesions do not match")
         
-    return x0, dim
+    return x0, args, dim
 
 
 def graph_format(x_label : str, y_label : str, title : str, ax=None, filename=False):
@@ -109,7 +114,7 @@ def midpoint_method(f, x, t, h, args=None):
     """
     
     
-    x, dim = error_handle(f, x, t, h, args, deltat_max=0.5)
+    x, args, dim = error_handle(f, x, t, h, args, deltat_max=0.5)
     x_new = np.zeros(dim)
     
     t_new = t + h
@@ -134,7 +139,7 @@ def eurler_method(f, x, t, h, args=None):
     """
 
 
-    x, dim = error_handle(f, x, t, h, args, deltat_max=0.5)
+    x, args, dim = error_handle(f, x, t, h, args, deltat_max=0.5)
     x_new = np.zeros(dim)
     
     t_new = t + h
@@ -159,7 +164,7 @@ def runge_kutta(f, x, t, h, args=None):
     """
     
     
-    x, dim = error_handle(f, x, t, h, args, deltat_max=0.5)
+    x, args, dim = error_handle(f, x, t, h, args, deltat_max=0.5)
     
     t_new = t + h
     x_new = np.zeros(dim)
@@ -212,7 +217,7 @@ def solve_to(f, x0, t1: float, t2: float, h: float, method, args=None, deltat_ma
     """
         
         
-    x0, dim = error_handle(f, x0, t1, h, args, deltat_max)
+    x0, args, dim = error_handle(f, x0, t1, h, args, deltat_max)
     
     # Ensures that the initial time is before the final time
     if t1 > t2:
@@ -284,7 +289,7 @@ def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0
     """
     
     
-    x0, dim = error_handle(ode, x0, 0, h, args, deltat_max=0.5)  
+    x0, args, dim = error_handle(ode, x0, 0, h, args, deltat_max=0.5)  
         
     def root_ode(u):
         x0 = u[0:-1]
@@ -353,18 +358,22 @@ def natural_parameter(ode, x0, period: float, phase, p_range: float, p_vary: int
     4.52758525e-01 -1.60753498e-16  3.93514178e-39  9.31616179e-61  5.74885115e-78]
     """
     
-    x0, dim = error_handle(ode, x0, period, h, args, deltat_max=0.5)
+    x0, args, dim = error_handle(ode, x0, period, h, args, deltat_max=0.5)
     
     p = np.linspace(p_range[0], p_range[1], num_steps)
     x = np.zeros((len(p), dim))
-    
+
     try:
         for ind, arg in enumerate(p):
-            args[p_vary] = arg
+            if isinstance(args, (int, float)):
+                args = arg
+            else:
+                args = list(args)
+                args[p_vary] = arg
             x_sol, t_sol, x0, period = shooting(ode, x0, period, phase, args, method, h, output=False)
             x[ind, :] = x0
     except (RuntimeError, ValueError):
-        print(f"Failed to converge at parameter value {arg}", "\n Hint: varying num_steps can help")
+        print(f"Failed to converge at parameter value {arg}", "\n Hint: vary num_steps or starting parameter value")
         return p[0:ind], x[0:ind]
         
     return p, x 
