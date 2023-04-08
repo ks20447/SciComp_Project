@@ -67,7 +67,7 @@ def error_handle(f, x0, t, h, args, deltat_max):
     return x0, dim
 
 
-def graph_format(x_label : str, y_label : str, title : str, ax=False, filename=False):
+def graph_format(x_label : str, y_label : str, title : str, ax=None, filename=False):
     """Matplotlib.pyplot plot formatting
 
     Args:
@@ -244,7 +244,7 @@ def solve_to(f, x0, t1: float, t2: float, h: float, method, args=None, deltat_ma
     return x, t
 
 
-def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0.01):
+def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0.01, output=True):
     """Numerical shooting to solve for ODE limit cycles. Uses solve_to to produce ODE solutions 
 
     Args:
@@ -294,7 +294,7 @@ def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0
         
         f = sols[0, :] - sols[-1, :]
         
-        p = np.array(phase(x0))
+        p = np.array(phase(x0, args))
         
         return np.append(f, p)
     
@@ -302,7 +302,8 @@ def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0
     x0, info, ier, msg = fsolve(root_ode, x0, full_output=True)
     
     if ier == 1:
-        print(f"Root finder found the solution x = {x0[0:-1]}, period t = {x0[-1]}s after {info['nfev']} function calls")         
+        if output:
+            print(f"Root finder found the solution x = {x0[0:-1]}, period t = {x0[-1]}s after {info['nfev']} function calls")         
     else:
         raise RuntimeError(f"Root finder failed with error message: {msg}") 
     
@@ -311,7 +312,7 @@ def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0
     return x, t, x0[0:-1], x0[-1]
 
 
-def natural_parameter(ode, x0, period: float, phase, p0: float, p1: float, num_steps: int, args=None, method=eurler_method, h=0.01):
+def natural_parameter(ode, x0, period: float, phase, p_range: float, p_vary: int, num_steps: int, args=None, method=eurler_method, h=0.01):
     """Natural parameter continuation investigating single parameter affect on ODE 
 
     Args:
@@ -352,19 +353,18 @@ def natural_parameter(ode, x0, period: float, phase, p0: float, p1: float, num_s
     4.52758525e-01 -1.60753498e-16  3.93514178e-39  9.31616179e-61  5.74885115e-78]
     """
     
-    ode_p = lambda t, u: ode(t, u, p0, args)
-    phase_p = lambda p: phase(p, p0, args)
+    x0, dim = error_handle(ode, x0, period, h, args, deltat_max=0.5)
     
-    x0, dim = error_handle(ode_p, x0, period, h, args, deltat_max=0.5)
-    
-    p = np.linspace(p0, p1, num_steps)
+    p = np.linspace(p_range[0], p_range[1], num_steps)
     x = np.zeros((len(p), dim))
     
     try:
-        for ind, p0 in enumerate(p):
-            x_sol, t_sol, x0, period = shooting(ode_p, x0, period, phase_p, args, method, h)
+        for ind, arg in enumerate(p):
+            args[p_vary] = arg
+            x_sol, t_sol, x0, period = shooting(ode, x0, period, phase, args, method, h, output=False)
             x[ind, :] = x0
-    except RuntimeError:
+    except (RuntimeError, ValueError):
+        print(f"Failed to converge at parameter value {arg}", "\n Hint: varying num_steps can help")
         return p[0:ind], x[0:ind]
         
     return p, x 
