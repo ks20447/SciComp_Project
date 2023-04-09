@@ -11,9 +11,9 @@ numerical_methods.py library to be used for Scientific Computing Coursework
 All commits to be pushed to "working" branch before merging to "master" branch
 
 To be completed:
+Check all documentation
 
 Notes:
-Perhaps can move if final_h statement to shorten code further;
 Remove requirment for users to need to specify no additional arguments 
 """
 
@@ -58,16 +58,21 @@ def error_handle(f, x0, t, h, args, deltat_max):
     else:
         raise TypeError("x is incorrect data type")
     
+    if isinstance(args, (int, float, list, tuple, np.ndarray)):
+        args = args
+    else:
+        raise TypeError("args is incorrect data type")
+    
     # Checks the initial conditions watch the provided ODE
     try:
         f(t, x0, args)
     except (TypeError, ValueError):
         raise ValueError(f"Function initial condition and/or argument dimesions do not match")
         
-    return x0, dim
+    return x0, args, dim
 
 
-def graph_format(x_label : str, y_label : str, title : str, ax=False, filename=False):
+def graph_format(x_label : str, y_label : str, title : str, ax=None, filename=False):
     """Matplotlib.pyplot plot formatting
 
     Args:
@@ -109,7 +114,7 @@ def midpoint_method(f, x, t, h, args=None):
     """
     
     
-    x, dim = error_handle(f, x, t, h, args, deltat_max=0.5)
+    x, args, dim = error_handle(f, x, t, h, args, deltat_max=0.5)
     x_new = np.zeros(dim)
     
     t_new = t + h
@@ -118,7 +123,7 @@ def midpoint_method(f, x, t, h, args=None):
     return x_new, t_new
 
 
-def eurler_step(f, x, t, h, args=None):
+def eurler_method(f, x, t, h, args=None):
     """Single Euler step for any order ODE approximations
 
     Args:
@@ -134,7 +139,7 @@ def eurler_step(f, x, t, h, args=None):
     """
 
 
-    x, dim = error_handle(f, x, t, h, args, deltat_max=0.5)
+    x, args, dim = error_handle(f, x, t, h, args, deltat_max=0.5)
     x_new = np.zeros(dim)
     
     t_new = t + h
@@ -159,7 +164,7 @@ def runge_kutta(f, x, t, h, args=None):
     """
     
     
-    x, dim = error_handle(f, x, t, h, args, deltat_max=0.5)
+    x, args, dim = error_handle(f, x, t, h, args, deltat_max=0.5)
     
     t_new = t + h
     x_new = np.zeros(dim)
@@ -173,7 +178,7 @@ def runge_kutta(f, x, t, h, args=None):
     return x_new, t_new 
     
   
-def solve_to(f, x0, t1: float, t2: float, h: float, method: str, args=None, deltat_max=0.5):
+def solve_to(f, x0, t1: float, t2: float, h: float, method, args=None, deltat_max=0.5):
     """Numerically solves given ODE from t1 to t2, in step-size h, with intitial condition(s) x0. 
     Second order and above ODE's must be converted to the equivalent system of first order ODE's.
     In the case that the time-span does not exatly divide by h, a final additional step will be calculated using the remainder.
@@ -185,7 +190,7 @@ def solve_to(f, x0, t1: float, t2: float, h: float, method: str, args=None, delt
         t1 (float): Start time
         t2 (float): End time
         h (float): Step-size
-        method (str): {'Euler', 'RK4', 'Midpoint'} Method of solving ODE
+        method (function): Function method for solving ODE {.euler, .midpoint, .runge_kutta}
         args (float, array-like): Additional ODE arguments
         deltat_max (float, optional): Maximum step-size allowed for solution. Defaults to 0.5.
 
@@ -212,7 +217,7 @@ def solve_to(f, x0, t1: float, t2: float, h: float, method: str, args=None, delt
     """
         
         
-    x0, dim = error_handle(f, x0, t1, h, args, deltat_max)
+    x0, args, dim = error_handle(f, x0, t1, h, args, deltat_max)
     
     # Ensures that the initial time is before the final time
     if t1 > t2:
@@ -227,21 +232,8 @@ def solve_to(f, x0, t1: float, t2: float, h: float, method: str, args=None, delt
     ind = 0
     
     while ind < no_steps - 1:
-        
-        match method:
             
-            case "Euler": 
-                x[ind + 1, :], t[ind + 1] = eurler_step(f, x[ind, :], t[ind], h, args)
-                
-            case "RK4":
-                x[ind + 1, :], t[ind + 1] = runge_kutta(f, x[ind, :], t[ind], h, args)
-                
-            case "Midpoint":
-                x[ind + 1, :], t[ind + 1] = midpoint_method(f, x[ind, :], t[ind], h, args)
-                
-            case _:
-                raise SyntaxError("Incorrect method type specified")
-        
+        x[ind + 1, :], t[ind + 1] = method(f, x[ind, :], t[ind], h, args)
         ind += 1   
         
     final_h = ((t2 - t1)/h - int((t2- t1)/h))*h 
@@ -250,23 +242,14 @@ def solve_to(f, x0, t1: float, t2: float, h: float, method: str, args=None, delt
         
         t = np.append(t, 0)
         x = np.concatenate((x, np.zeros((1, dim))))
-            
-        match method:
-            
-            case "Euler": 
-                x[ind + 1, :], t[ind + 1] = eurler_step(f, x[ind, :], t[ind], final_h, args)
-                
-            case "RK4":
-                x[ind + 1, :], t[ind + 1] = runge_kutta(f, x[ind, :], t[ind], final_h, args)
-                
-            case "Midpoint":
-                x[ind + 1, :], t[ind + 1] = midpoint_method(f, x[ind, :], t[ind], final_h, args)
+        
+        x[ind + 1, :], t[ind + 1] = method(f, x[ind, :], t[ind], final_h, args)
                     
                     
     return x, t
 
 
-def shooting(ode, x0, period: float, phase, args=None, method="Euler", h=0.01):
+def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0.01, output=True):
     """Numerical shooting to solve for ODE limit cycles. Uses solve_to to produce ODE solutions 
 
     Args:
@@ -275,7 +258,7 @@ def shooting(ode, x0, period: float, phase, args=None, method="Euler", h=0.01):
         period (float): Initial guess for ODE limit cycle period time    
         phase (function): Phase condition
         args (float, array-like): Additional ODE arguments
-        method (str, optional): Method used to solve ODE as given by solve_to. Defaults to "Euler"
+        method (function, optional): Function method for solving ODE {.euler_method, .midpoint_method, .runge_kutta}. Defaults to .euler_method
         h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
 
     Raises:
@@ -306,7 +289,7 @@ def shooting(ode, x0, period: float, phase, args=None, method="Euler", h=0.01):
     """
     
     
-    x0, dim = error_handle(ode, x0, 0, h, args, deltat_max=0.5)  
+    x0, args, dim = error_handle(ode, x0, 0, h, args, deltat_max=0.5)  
         
     def root_ode(u):
         x0 = u[0:-1]
@@ -316,7 +299,7 @@ def shooting(ode, x0, period: float, phase, args=None, method="Euler", h=0.01):
         
         f = sols[0, :] - sols[-1, :]
         
-        p = np.array(phase(x0))
+        p = np.array(phase(x0, args))
         
         return np.append(f, p)
     
@@ -324,7 +307,8 @@ def shooting(ode, x0, period: float, phase, args=None, method="Euler", h=0.01):
     x0, info, ier, msg = fsolve(root_ode, x0, full_output=True)
     
     if ier == 1:
-        print(f"Root finder found the solution x = {x0[0:-1]}, period t = {x0[-1]}s after {info['nfev']} function calls")         
+        if output:
+            print(f"Root finder found the solution x = {x0[0:-1]}, period t = {x0[-1]}s after {info['nfev']} function calls")         
     else:
         raise RuntimeError(f"Root finder failed with error message: {msg}") 
     
@@ -333,7 +317,7 @@ def shooting(ode, x0, period: float, phase, args=None, method="Euler", h=0.01):
     return x, t, x0[0:-1], x0[-1]
 
 
-def natural_parameter(ode, x0, period: float, phase, p0: float, p1: float, num_steps: int, args=None, method="Euler", h=0.01):
+def natural_parameter(ode, x0, period: float, phase, p_range: float, p_vary: int, num_steps: int, args=None, method=eurler_method, h=0.01):
     """Natural parameter continuation investigating single parameter affect on ODE 
 
     Args:
@@ -345,7 +329,7 @@ def natural_parameter(ode, x0, period: float, phase, p0: float, p1: float, num_s
         p1 (float): Final parameter value
         num_steps (int): Number of linearly placed steps to take between p0 and p1
         args (float, array-like): Additional ODE arguments        
-        method (str, optional): Method used to solve ODE as given by solve_to. Defaults to "Euler"
+        method (function, optional): Function method for solving ODE {.euler_method, .midpoint_method, .runge_kutta}. Defaults to .euler_method
         h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
 
     Returns:
@@ -374,25 +358,28 @@ def natural_parameter(ode, x0, period: float, phase, p0: float, p1: float, num_s
     4.52758525e-01 -1.60753498e-16  3.93514178e-39  9.31616179e-61  5.74885115e-78]
     """
     
-    ode_p = lambda t, u: ode(t, u, p0, args)
-    phase_p = lambda p: phase(p, p0, args)
+    x0, args, dim = error_handle(ode, x0, period, h, args, deltat_max=0.5)
     
-    x0, dim = error_handle(ode_p, x0, period, h, args, deltat_max=0.5)
-    
-    p = np.linspace(p0, p1, num_steps)
+    p = np.linspace(p_range[0], p_range[1], num_steps)
     x = np.zeros((len(p), dim))
-    
+
     try:
-        for ind, p0 in enumerate(p):
-            x_sol, t_sol, x0, period = shooting(ode_p, x0, period, phase_p, args, method, h)
+        for ind, arg in enumerate(p):
+            if isinstance(args, (int, float)):
+                args = arg
+            else:
+                args = list(args)
+                args[p_vary] = arg
+            x_sol, t_sol, x0, period = shooting(ode, x0, period, phase, args, method, h, output=False)
             x[ind, :] = x0
-    except RuntimeError:
+    except (RuntimeError, ValueError):
+        print(f"Failed to converge at parameter value {arg}", "\n Hint: vary num_steps or starting parameter value")
         return p[0:ind], x[0:ind]
         
     return p, x 
 
 
-def pseudo_arclength(ode, states, periods, phase, parameters, num_steps: float, args=None, method="Euler", h=0.01):
+def pseudo_arclength(ode, states, periods, phase, parameters, num_steps: float, args=None, method=eurler_method, h=0.01):
     """Pseudo-arclength continuation investigating single parameter affect on ODE 
 
     Args:
@@ -403,7 +390,7 @@ def pseudo_arclength(ode, states, periods, phase, parameters, num_steps: float, 
         parameters (array-like): Two initial parameter values
         num_steps (int): Number of pseudo-arclength operations to take
         args (float, array-like): Additional ODE arguments
-        method (str, optional): Method used to solve ODE as given by solve_to. Defaults to "Euler"
+        method (function, optional): Function method for solving ODE {.euler_method, .midpoint_method, .runge_kutta}. Defaults to .euler_method
         h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
 
     Returns:
