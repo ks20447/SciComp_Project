@@ -235,7 +235,7 @@ def solve_to(f, x0, t1: float, t2: float, h: float, method, args=None, deltat_ma
             
         x[ind + 1, :], t[ind + 1] = method(f, x[ind, :], t[ind], h, args)
         ind += 1   
-        
+    
     final_h = ((t2 - t1)/h - int((t2- t1)/h))*h 
     
     if final_h: # In the case that t2 exactly divides by h, we don't want to execute this part
@@ -379,7 +379,7 @@ def natural_parameter(ode, x0, period: float, phase, p_range: float, p_vary: int
     return p, x 
 
 
-def pseudo_arclength(ode, states, periods, phase, parameters, num_steps: float, args=None, method=eurler_method, h=0.01):
+def pseudo_arclength(ode, states, periods, phase, parameters, p_vary, p_final, args=None, method=eurler_method, h=0.001):
     """Pseudo-arclength continuation investigating single parameter affect on ODE 
 
     Args:
@@ -422,49 +422,50 @@ def pseudo_arclength(ode, states, periods, phase, parameters, num_steps: float, 
     [ 1.30598713 -0.00648261  6.2830807   1.70096479]
     [ 1.26748393 -0.00629417  6.2830807   1.60197335]]
     """ 
+    max_iter = 100
     
-    ode_arc = lambda t, u: ode(t, u, parameters[0], args)
-    phase_arc = lambda p: phase(p, parameters[0], args) 
+    x0, args, dim = error_handle(ode, states[0], periods[0], h, args, deltat_max=0.5)
+    x1, args, dim = error_handle(ode, states[1], periods[1], h, args, deltat_max=0.5)
     
-    x0, dim = error_handle(ode_arc, states[0], periods[0], h, args, deltat_max=0.5)
-    x1, dim = error_handle(ode_arc, states[1], periods[1], h, args, deltat_max=0.5)
+    args[p_vary] = parameters[0]
+    x, t, x0, periods[0] = shooting(ode, states[0], periods[0], phase, args)
+    args[p_vary] = parameters[1]
+    x, t, x1, periods[1] = shooting(ode, states[1], periods[1], phase, args)
     
-    t0 = periods[0]
-    t1 = periods[1]
-    
-    p0 = parameters[0]
-    p1 = parameters[1]
+    t0, t1 = periods[0], periods[1]
+    p0, p1 = parameters[0], parameters[1]
     
     v0 = np.append(x0, [t0, p0])
     v1 = np.append(x1, [t1, p1])
-    v = np.zeros((num_steps, dim + 2))
+    v = np.zeros((max_iter, dim + 2))
     v[0, :], v[1, :] = v0, v1
+    ind = 1
     
     try:
-        for i in range(num_steps - 2):
-            secant = v[i+1] - v[i]
-            pred =  v[i+1] + secant
-            
-            phase_arc = lambda p: phase(p, pred[-1], args) 
-            ode_arc = lambda t, u: ode(t, u, pred[-1], args)
+        while v[ind, -1] > p_final and ind < max_iter:
+            if v[ind, -1] > v[ind - 1, -1]:
+                break 
+            secant = v[ind] - v[ind - 1]
+            pred =  v[ind] + secant
+            args[p_vary] = pred[-1]
             
             def ode_root(u):
                 x0 = u[0:2]
                 t = u[2]
-                sols = solve_to(ode_arc, x0, 0, t, h, method, args)[0]
+                sols = solve_to(ode, x0, 0, t, h, method, args)[0]
                 f = np.zeros(dim)
                 
                 f = sols[0, :] - sols[-1, :]
-                p = phase_arc(u[0:2])
+                p = phase(u[0:2], args)
                 arc = np.dot(u - pred, secant)
                 
                 return np.append(f, [p, arc])
             
-            v[2 + i, :], info, ier, msg = fsolve(ode_root, v[1 + i, :], full_output=True)    
-            
-    except ValueError:
-        v = v[0:i+2]
-        print(f"Root finding stopped after {i + 2} steps at p = {v[-1, -1]}")
+            v[ind + 1, :], info, ier, msg = fsolve(ode_root, pred, full_output=True) 
+            ind += 1          
+    except (ValueError, IndexError):
+        print(f"Root finding stopped after {ind + 2} steps at p = {v[-1, -1]}")
+        return v[0:ind+1]
         
-    return v
+    return v[0:ind+1]
     
