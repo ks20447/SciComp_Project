@@ -50,10 +50,8 @@ def error_handle(f, x0, t, h, args, deltat_max):
     
     # Checks that provided initial conditions are the correct data type
     if isinstance(x0, (int, float)):
-        x0 = x0
         dim = 1
     elif isinstance(x0, (list, tuple, np.ndarray)):
-        x0 = np.asarray(x0)
         dim = len(x0)
     else:
         raise TypeError("x is incorrect data type")
@@ -215,8 +213,6 @@ def solve_to(f, x0, t1: float, t2: float, h: float, method, args=None, deltat_ma
     [1.         1.1        1.21       1.331      1.4641     1.61051
     1.771561   1.9487171  2.14358881 2.35794769 2.59374246] [0.  0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1. ]
     """
-        
-        
     x0, args, dim = error_handle(f, x0, t1, h, args, deltat_max)
     
     # Ensures that the initial time is before the final time
@@ -292,29 +288,29 @@ def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0
     x0, args, dim = error_handle(ode, x0, 0, h, args, deltat_max=0.5)  
         
     def root_ode(u):
-        x0 = u[0:-1]
-        t = u[-1]
+        x0, t = u[0:2], u[-1]
         sols = solve_to(ode, x0, 0, t, h, method, args)[0]
         f = np.zeros(dim)
         
         f = sols[0, :] - sols[-1, :]
         
-        p = np.array(phase(x0, args))
+        p = phase(x0, args)
         
         return np.append(f, p)
     
-    x0 = np.append(x0, period)  
-    x0, info, ier, msg = fsolve(root_ode, x0, full_output=True)
+    u = np.append(x0, period)
+    u, info, ier, msg = fsolve(root_ode, u, full_output=True)
+    x0, period = u[0:2], u[-1]
     
     if ier == 1:
         if output:
-            print(f"Root finder found the solution x = {x0[0:-1]}, period t = {x0[-1]}s after {info['nfev']} function calls")         
+            print(f"Root finder found the solution x = {x0}, period t = {period}s after {info['nfev']} function calls")         
     else:
         raise RuntimeError(f"Root finder failed with error message: {msg}") 
     
-    x, t = solve_to(ode, x0[0:-1], 0, x0[-1], 0.01, method, args)
+    x, t = solve_to(ode, x0, 0, period, 0.01, method, args)
     
-    return x, t, x0[0:-1], x0[-1]
+    return x, t, x0, period
 
 
 def natural_parameter(ode, x0, period: float, phase, p_range: float, p_vary: int, num_steps: int, args=None, method=eurler_method, h=0.01):
@@ -424,16 +420,24 @@ def pseudo_arclength(ode, states, periods, phase, parameters, p_vary, p_final, a
     """ 
     max_iter = 100
     
-    x0, args, dim = error_handle(ode, states[0], periods[0], h, args, deltat_max=0.5)
-    x1, args, dim = error_handle(ode, states[1], periods[1], h, args, deltat_max=0.5)
-    
-    args[p_vary] = parameters[0]
-    x, t, x0, periods[0] = shooting(ode, states[0], periods[0], phase, args)
-    args[p_vary] = parameters[1]
-    x, t, x1, periods[1] = shooting(ode, states[1], periods[1], phase, args)
-    
     t0, t1 = periods[0], periods[1]
     p0, p1 = parameters[0], parameters[1]
+    
+    x0, args, dim = error_handle(ode, states[0], t0, h, args, deltat_max=0.5)
+    x1, args, dim = error_handle(ode, states[1], t1, h, args, deltat_max=0.5)
+    
+    if isinstance(args, (int, float)):
+        args0 = p0
+        args1 = p1
+    else:
+        args = list(args)
+        args[p_vary] = p0
+        args0 = args
+        args[p_vary] = p1
+        args1 = args
+    
+    x0, t0 = shooting(ode, x0, t0, phase, args0, output=False)[2::]
+    x1, t1 = shooting(ode, x1, t1, phase, args1, output=False)[2::]
     
     v0 = np.append(x0, [t0, p0])
     v1 = np.append(x1, [t1, p1])
@@ -441,31 +445,38 @@ def pseudo_arclength(ode, states, periods, phase, parameters, p_vary, p_final, a
     v[0, :], v[1, :] = v0, v1
     ind = 1
     
+    
     try:
-        while v[ind, -1] > p_final and ind < max_iter:
-            if v[ind, -1] > v[ind - 1, -1]:
-                break 
+        while  ind < max_iter:
             secant = v[ind] - v[ind - 1]
             pred =  v[ind] + secant
-            args[p_vary] = pred[-1]
             
-            def ode_root(u):
-                x0 = u[0:2]
-                t = u[2]
+            if v[ind, -1] > v[ind - 1, -1] or pred[-1] < p_final :
+                break 
+            
+            if isinstance(args, (int, float)):
+                args = pred[-1]
+            else:
+                args = list(args)
+                args[p_vary] = pred[-1]
+            
+            def ode_root(v):
+                x0 = v[0:2]
+                t = v[2]
                 sols = solve_to(ode, x0, 0, t, h, method, args)[0]
                 f = np.zeros(dim)
                 
                 f = sols[0, :] - sols[-1, :]
-                p = phase(u[0:2], args)
-                arc = np.dot(u - pred, secant)
+                p = phase(x0, args)
+                arc = np.dot(v - pred, secant)
                 
                 return np.append(f, [p, arc])
             
             v[ind + 1, :], info, ier, msg = fsolve(ode_root, pred, full_output=True) 
             ind += 1          
     except (ValueError, IndexError):
-        print(f"Root finding stopped after {ind + 2} steps at p = {v[-1, -1]}")
+        print(f"Root finding stopped after {ind + 2} steps at p = {pred[-1]}")
         return v[0:ind+1]
         
-    return v[0:ind+1]
+    return v[0:ind]
     
