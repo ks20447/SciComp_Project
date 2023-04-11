@@ -23,7 +23,7 @@ import numpy as np
 from scipy.optimize import fsolve
 
 
-def error_handle(f, x0, t, h, args, deltat_max):
+def error_handle(f, x0, t, h, args, deltat_max, full=True):
     """Error handling used across several functions
 
     Args:
@@ -111,9 +111,8 @@ def midpoint_method(f, x, t, h, args=None):
         float: approximation for next x 
     """
     
-    
-    x, args, dim = error_handle(f, x, t, h, args, deltat_max=0.5)
-    x_new = np.zeros(dim)
+
+    x_new = np.zeros(len(x))
     
     t_new = t + h
     x_new = x + h*np.asarray(f(t_new + h/2, x + h/2*np.asarray(f(t, x, args)), args))       
@@ -136,11 +135,9 @@ def eurler_method(f, x, t, h, args=None):
         float: next timestep 
     """
 
-
-    x, args, dim = error_handle(f, x, t, h, args, deltat_max=0.5)
-    x_new = np.zeros(dim)
-    
     t_new = t + h
+    x_new = np.zeros(len(x))
+    
     x_new = x + h*np.asarray(f(t_new, x, args))
 
     return x_new, t_new
@@ -162,10 +159,8 @@ def runge_kutta(f, x, t, h, args=None):
     """
     
     
-    x, args, dim = error_handle(f, x, t, h, args, deltat_max=0.5)
-    
     t_new = t + h
-    x_new = np.zeros(dim)
+    x_new = np.zeros(len(x))
 
     k1 = h * np.asarray(f(t, x, args))
     k2 = h * np.asarray(f(t + h/2, x + k1/2, args))
@@ -212,7 +207,9 @@ def solve_to(f, x0, t1: float, t2: float, h: float, method, args=None, deltat_ma
     >>> print(x[:, 0], t)
     [1.         1.1        1.21       1.331      1.4641     1.61051
     1.771561   1.9487171  2.14358881 2.35794769 2.59374246] [0.  0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1. ]
-    """
+    """    
+    
+      
     x0, args, dim = error_handle(f, x0, t1, h, args, deltat_max)
     
     # Ensures that the initial time is before the final time
@@ -375,7 +372,7 @@ def natural_parameter(ode, x0, period: float, phase, p_range: float, p_vary: int
     return p, x 
 
 
-def pseudo_arclength(ode, states, periods, phase, parameters, p_vary, p_final, args=None, method=eurler_method, h=0.001):
+def pseudo_arclength(ode, states, periods, phase, parameters, p_vary, p_final, args=None, method=eurler_method, h=0.01):
     """Pseudo-arclength continuation investigating single parameter affect on ODE 
 
     Args:
@@ -444,7 +441,6 @@ def pseudo_arclength(ode, states, periods, phase, parameters, p_vary, p_final, a
     v = np.zeros((max_iter, dim + 2))
     v[0, :], v[1, :] = v0, v1
     ind = 1
-    
     
     try:
         while  ind < max_iter:
