@@ -67,7 +67,7 @@ def error_handle(f, x0, t, h, args, deltat_max, full=True):
     except (TypeError, ValueError):
         raise ValueError(f"Function initial condition and/or argument dimesions do not match")
         
-    return x0, args, dim
+    return dim
 
 
 def graph_format(x_label : str, y_label : str, title : str, ax=None, filename=False):
@@ -171,14 +171,14 @@ def runge_kutta(f, x, t, h, args=None):
     return x_new, t_new 
     
   
-def solve_to(f, x0, t1: float, t2: float, h: float, method, args=None, deltat_max=0.5):
+def solve_to(ode, x0, t1: float, t2: float, h: float, method, args=None, deltat_max=0.5):
     """Numerically solves given ODE from t1 to t2, in step-size h, with intitial condition(s) x0. 
     Second order and above ODE's must be converted to the equivalent system of first order ODE's.
     In the case that the time-span does not exatly divide by h, a final additional step will be calculated using the remainder.
     ODE's should specify that there are no additonal parameters in its arguments `def ode(t, x, args=None)`
 
     Args:
-        f (function): ODE system to be solved.
+        ode (function): ODE system to be solved.
         x0 (float, array-like): Initial condition(s) 
         t1 (float): Start time
         t2 (float): End time
@@ -210,7 +210,7 @@ def solve_to(f, x0, t1: float, t2: float, h: float, method, args=None, deltat_ma
     """    
     
       
-    x0, args, dim = error_handle(f, x0, t1, h, args, deltat_max)
+    dim = error_handle(ode, x0, t1, h, args, deltat_max)
     
     # Ensures that the initial time is before the final time
     if t1 > t2:
@@ -226,17 +226,17 @@ def solve_to(f, x0, t1: float, t2: float, h: float, method, args=None, deltat_ma
     
     while ind < no_steps - 1:
             
-        x[ind + 1, :], t[ind + 1] = method(f, x[ind, :], t[ind], h, args)
+        x[ind + 1, :], t[ind + 1] = method(ode, x[ind, :], t[ind], h, args)
         ind += 1   
     
     final_h = ((t2 - t1)/h - int((t2- t1)/h))*h 
     
-    if final_h: # In the case that t2 exactly divides by h, we don't want to execute this part
+    if final_h: # In the case that (t2 - t1) exactly divides by h, we don't want to execute this part
         
         t = np.append(t, 0)
         x = np.concatenate((x, np.zeros((1, dim))))
         
-        x[ind + 1, :], t[ind + 1] = method(f, x[ind, :], t[ind], final_h, args)
+        x[ind + 1, :], t[ind + 1] = method(ode, x[ind, :], t[ind], final_h, args)
                     
                     
     return x, t
@@ -282,10 +282,10 @@ def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0
     """
     
     
-    x0, args, dim = error_handle(ode, x0, 0, h, args, deltat_max=0.5)  
+    dim = error_handle(ode, x0, 0, h, args, deltat_max=0.5)  
         
     def root_ode(u):
-        x0, t = u[0:2], u[-1]
+        x0, t = u[0:dim], u[-1]
         sols = solve_to(ode, x0, 0, t, h, method, args)[0]
         f = np.zeros(dim)
         
@@ -297,7 +297,7 @@ def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0
     
     u = np.append(x0, period)
     u, info, ier, msg = fsolve(root_ode, u, full_output=True)
-    x0, period = u[0:2], u[-1]
+    x0, period = u[0:dim], u[-1]
     
     if ier == 1:
         if output:
@@ -351,7 +351,7 @@ def natural_parameter(ode, x0, period: float, phase, p_range: float, p_vary: int
     4.52758525e-01 -1.60753498e-16  3.93514178e-39  9.31616179e-61  5.74885115e-78]
     """
     
-    x0, args, dim = error_handle(ode, x0, period, h, args, deltat_max=0.5)
+    dim = error_handle(ode, x0, period, h, args, deltat_max=0.5)
     
     p = np.linspace(p_range[0], p_range[1], num_steps)
     x = np.zeros((len(p), dim))
@@ -417,11 +417,13 @@ def pseudo_arclength(ode, states, periods, phase, parameters, p_vary, p_final, a
     """ 
     max_iter = 100
     
+    
+    x0, x1 = states[0], states[1]
     t0, t1 = periods[0], periods[1]
     p0, p1 = parameters[0], parameters[1]
     
-    x0, args, dim = error_handle(ode, states[0], t0, h, args, deltat_max=0.5)
-    x1, args, dim = error_handle(ode, states[1], t1, h, args, deltat_max=0.5)
+    dim = error_handle(ode, x0, t0, h, args, deltat_max=0.5)
+    dim = error_handle(ode, x1, t1, h, args, deltat_max=0.5)
     
     if isinstance(args, (int, float)):
         args0 = p0
@@ -447,7 +449,7 @@ def pseudo_arclength(ode, states, periods, phase, parameters, p_vary, p_final, a
             secant = v[ind] - v[ind - 1]
             pred =  v[ind] + secant
             
-            if v[ind, -1] > v[ind - 1, -1] or pred[-1] < p_final :
+            if pred[-1] < p_final :
                 break 
             
             if isinstance(args, (int, float)):
@@ -457,8 +459,8 @@ def pseudo_arclength(ode, states, periods, phase, parameters, p_vary, p_final, a
                 args[p_vary] = pred[-1]
             
             def ode_root(v):
-                x0 = v[0:2]
-                t = v[2]
+                x0 = v[0:dim]
+                t = v[dim]
                 sols = solve_to(ode, x0, 0, t, h, method, args)[0]
                 f = np.zeros(dim)
                 
