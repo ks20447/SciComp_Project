@@ -8,13 +8,20 @@ Author: ks20447@bristol.ac.uk (Adam Morris)
 
 numerical_methods.py library to be used for Scientific Computing Coursework
 
-All commits to be pushed to "working" branch before merging to "master" branch
+\nThese include:
+    - euler_method - performs one step of the euler numerical integration method
+    - midpoint_method - performs one step of the midpoint numerical integration method
+    - runge_kutta - performs one step of the Runge-Kutta 4th order numerical integration method
+    - solve_to - evaluates a given ODE using one of the pre-defined numerical integration methods
+    - shooting - finds equilibria/limit cycles of ODE's using numerical shooting
+    - natural_parameter - investigates parameter effects on ODE equilibria/limit cycle solutions using natural parameter continuation
+    - pseudo-arclength - investigates parameter effects on ODE equilibria/limit cycle solutions using pseudo-arclength continuation
+    - graph_format - creates consistent graph formats for matplotlib.pyplot figures
+    - error_handle - captures possible user generated errors across the included numerical methods
 
-To be completed:
-Check all documentation
-
-Notes:
-Remove requirment for users to need to specify no additional arguments 
+Potential Future Development:
+Remove requirement for users to need to specify no additional arguments
+Add ability to include other ODE solvers within methods, such as `scipy.integrate.solve_ivp`
 """
 
 
@@ -23,24 +30,23 @@ import numpy as np
 from scipy.optimize import fsolve
 
 
-def error_handle(f, x0, t, h, args, deltat_max, full=True):
-    """Error handling used across several functions
+def error_handle(f, x0, t, h, args, deltat_max):
+    """Error handling used across several functions to catch user input errors.
 
     Args:
         f (function): ODE being checked
-        x0 (float, array_like): Initial conditions
-        t (float): Time value (often initial time value)
-        h (float): Step-size
+        x0 (float, array_like): Initial conditions of ODE
+        t (float): Any time value 
+        h (float): Method step-size
         args (float, array-like): Additional ODE arguments
         deltat_max (float): Maximum step size
 
     Raises:
-        ValueError: Step size is too large
+        ValueError: Step size is larger than deltat_max
         TypeError: Initial conditions are incorrect data type 
         ValueError: Inconsistent dimensionality of ODE and IC
 
     Returns:
-        float, array-like: Initial conditions
         int: Dimension of ODE
     """
     
@@ -56,10 +62,11 @@ def error_handle(f, x0, t, h, args, deltat_max, full=True):
     else:
         raise TypeError("x is incorrect data type")
     
-    if isinstance(args, (int, float, list, tuple, np.ndarray)):
-        args = args
-    else:
-        raise TypeError("args is incorrect data type")
+    if args:
+        if isinstance(args, (int, float, list, tuple, np.ndarray)):
+            args = args
+        else:
+            raise TypeError("args is incorrect data type")
     
     # Checks the initial conditions watch the provided ODE
     try:
@@ -71,13 +78,13 @@ def error_handle(f, x0, t, h, args, deltat_max, full=True):
 
 
 def graph_format(x_label : str, y_label : str, title : str, ax=None, filename=False):
-    """Matplotlib.pyplot plot formatting
+    """Matplotlib.pyplot plot formatting. Sets title, axis labels, grid and legend.
 
     Args:
         x_label (string): x-axis label
         y_label (string): y-axis label
         title (string): title of plot
-        ax (axis.Axis): axis object for use with subplots
+        ax (axis.Axis, optional): axis object for use with subplots
         filename (string, optional): name given to saved .png plot
     """
     
@@ -98,17 +105,18 @@ def graph_format(x_label : str, y_label : str, title : str, ax=None, filename=Fa
       
 
 def midpoint_method(f, x, t, h, args=None):
-    """Explicit midpoint method for any order ODE approximations
+    """Single step of Midpoint numerical integration method.
 
     Args:
         f (function): ODE function being solved
-        x (float): current x approximation
+        x (array): current x approximation
         t (float): current timestep 
-        h (float): stepsize
+        h (float): step-size
         args (float, array-like): Additional ODE arguments
 
     Returns:
-        float: approximation for next x 
+        array: approximation for next x
+        float: next time step
     """
     
 
@@ -121,18 +129,18 @@ def midpoint_method(f, x, t, h, args=None):
 
 
 def eurler_method(f, x, t, h, args=None):
-    """Single Euler step for any order ODE approximations
+    """Single step of Euler numerical integration method.
 
     Args:
-        f (function): ODE function being approximated
-        x (float): current x approximation
+        f (function): ODE function being solved
+        x (array): current x approximation
         t (float): current timestep 
-        h (float): stepsize
+        h (float): step-size
         args (float, array-like): Additional ODE arguments
 
     Returns:
-        float: approximation for next x
-        float: next timestep 
+        array: approximation for next x
+        float: next time step
     """
 
     t_new = t + h
@@ -144,18 +152,18 @@ def eurler_method(f, x, t, h, args=None):
 
 
 def runge_kutta(f, x, t, h, args=None):
-    """Runge-Kutta 4th order method for any order ODE approximations
+    """Single step of Rugne-Kutta 4th order numerical integration method.
 
     Args:
-        f (function): ODE function being approximated
-        x (float): current x approximation
+        f (function): ODE function being solved
+        x (array): current x approximation
         t (float): current timestep 
-        h (float): stepsize
+        h (float): step-size
         args (float, array-like): Additional ODE arguments
 
     Returns:
-        float: approximation for next x
-        float: next timestep 
+        array: approximation for next x
+        float: next time step
     """
     
     
@@ -172,10 +180,10 @@ def runge_kutta(f, x, t, h, args=None):
     
   
 def solve_to(ode, x0, t1: float, t2: float, h: float, method, args=None, deltat_max=0.5):
-    """Numerically solves given ODE from t1 to t2, in step-size h, with intitial condition(s) x0. 
+    """Numerically solves given `ode` from `t1` to `t2`, in step-size `h`, with initial condition(s) `x0`. 
     Second order and above ODE's must be converted to the equivalent system of first order ODE's.
-    In the case that the time-span does not exatly divide by h, a final additional step will be calculated using the remainder.
-    ODE's should specify that there are no additonal parameters in its arguments `def ode(t, x, args=None)`
+    In the case that the time-span does not exactly divide by `h`, a final additional step will be calculated using the remainder.
+    ODE's should specify that there are no additional parameters in its arguments `def ode(t, x, args=None)`.
 
     Args:
         ode (function): ODE system to be solved.
@@ -188,22 +196,20 @@ def solve_to(ode, x0, t1: float, t2: float, h: float, method, args=None, deltat_
         deltat_max (float, optional): Maximum step-size allowed for solution. Defaults to 0.5.
 
     Raises:
-        ValueError: h is larger than deltat_max. t2 is larger than t1. Function and initial condition dimesions do not macth
-        TypeError: x0 should be given as an integer/float or array-like
-        SyntaxError: method type did not match predefined methods
+        ValueError: `t2` is larger than `t1`.
 
     Returns:
-        array: approximation of ODE solution(s)
-        array: timestpes of ODE solution
+        array: approximation of ODE solution
+        array: time steps of ODE solution
         
     Example
     -------
     >>> import numerical_methods as nm
     >>> def ode_second_order(t, u, args=None):
-    ...     x, y = u
-    ...     dudt = [x, y]
-    ... return dudt
-    >>> x, t = nm.solve_to(ode_second_order, [1, 1], 0, 1, 0.1, "Euler")
+    ...    x, y = u
+    ...    dudt = [x, y]
+    ...    return dudt
+    >>> x, t = nm.solve_to(ode_second_order, [1, 1], 0, 1, 0.1, nm.eurler_method)
     >>> print(x[:, 0], t)
     [1.         1.1        1.21       1.331      1.4641     1.61051
     1.771561   1.9487171  2.14358881 2.35794769 2.59374246] [0.  0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1. ]
@@ -243,7 +249,7 @@ def solve_to(ode, x0, t1: float, t2: float, h: float, method, args=None, deltat_
 
 
 def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0.01, output=True):
-    """Numerical shooting to solve for ODE limit cycles. Uses solve_to to produce ODE solutions 
+    """Numerical shooting to solve for ODE equilibria/limit cycles. Uses solve_to to produce ODE solutions. 
 
     Args:
         ode (function): ODE to be solved  
@@ -253,6 +259,7 @@ def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0
         args (float, array-like): Additional ODE arguments
         method (function, optional): Function method for solving ODE {.euler_method, .midpoint_method, .runge_kutta}. Defaults to .euler_method
         h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
+        output (bool, optional): Toggle print output 
 
     Raises:
         RuntimeError: Root finder failed to converge 
@@ -266,19 +273,24 @@ def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0
     Example
     -------
     >>> import numerical_methods as nm
-    >>> def hopf_normal_form(t, u, sigma, beta):
-    ...     u1, u2 = u
-    ...     dudt = [beta*u1 - u2 + sigma*u1*(u1**2 + u2**2), u1 + beta*u2 + sigma*u2*(u1**2 + u2**2)]
-    ...     return dudt
-    >>> def hopf_phase(p, sigma, beta):
-    ...     u1, u2 = p
-    ...     p = beta*u1 - u2 + sigma*u1*(u1**2 + u2**2)
-    ...     return p 
-    >>> sigma, beta = -1, 1
-    >>> hopf = lambda t, u: hopf_normal_form(t, u, sigma, beta)
-    >>> phase = lambda p: hopf_phase(p, sigma, beta)
-    >>> u, t, u0, period = nm.shooting(hopf, [1, 0], 6.3, phase)
-    Root finder found the solution x = [ 1.00247384 -0.00499102], period t = 6.283080704684171s after 9 function calls
+    >>> def predator_prey(t, u, args):
+    ...     a, d, b = args
+    ...     x, y = u
+    ...     dxdt = x*(1 - x) - (a*x*y)/(d + x)
+    ...     dydt = b*y*(1 - y/x)
+    ...     return dxdt, dydt
+    >>> def phase(p, args):
+    ...     a, d, b = args
+    ...     x, y = p
+    ...     p = x*(1 - x) - (a*x*y)/(d + x)
+    ...     return p
+    >>> x0 = [0.39, 0.30]
+    >>> t1, t2 = 0, 19
+    >>> h = 0.01
+    >>> args = [1, 0.1, 0.25]
+    >>> period = t2 - t1
+    >>> x, t, x0, period = nm.shooting(predator_prey, x0, period, phase, args)
+    Root finder found the solution x = [0.39551779 0.29953169], period t = 18.38440240297539 after 13 function calls
     """
     
     
@@ -301,7 +313,7 @@ def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0
     
     if ier == 1:
         if output:
-            print(f"Root finder found the solution x = {x0}, period t = {period}s after {info['nfev']} function calls")         
+            print(f"Root finder found the solution x = {x0}, period t = {period} after {info['nfev']} function calls")         
     else:
         raise RuntimeError(f"Root finder failed with error message: {msg}") 
     
@@ -311,17 +323,18 @@ def shooting(ode, x0, period: float, phase, args=None, method=eurler_method, h=0
 
 
 def natural_parameter(ode, x0, period: float, phase, p_range: float, p_vary: int, num_steps: int, args=None, method=eurler_method, h=0.01):
-    """Natural parameter continuation investigating single parameter affect on ODE 
+    """Natural parameter continuation. Investigates single parameter effect on ODE by stepping through linearly spaced parameter values in `p_range`.
+    Uses `shooting` to find solutions.
 
     Args:
-        ode (function): ODE to be solved
-        x0 (float, array-like): Initial state vector
+        ode (function): ODE to be investigated
+        x0 (float, array-like): Initial condition guess
         period (float): Limit cycle period guess
         phase (function): Phase condition
-        p0 (float): Initial parameter value
-        p1 (float): Final parameter value
-        num_steps (int): Number of linearly placed steps to take between p0 and p1
-        args (float, array-like): Additional ODE arguments        
+        p_range (array-like): Parameter range to be investigated
+        p_vary (int): Index position of parameter to be changed in `args`
+        num_steps (int): Number of linearly spaced steps to take in `p_range`
+        args (float, array-like): Additional ODE arguments, including investigated parameter        
         method (function, optional): Function method for solving ODE {.euler_method, .midpoint_method, .runge_kutta}. Defaults to .euler_method
         h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
 
@@ -331,24 +344,34 @@ def natural_parameter(ode, x0, period: float, phase, p_range: float, p_vary: int
         
     Example
     -------
-    import numerical_methods as nm
-    >>> def hopf_normal_form(t, u, beta):
-    ...     sigma = -1
+    >>> import numerical_methods as nm
+    >>> def hopf_normal_form(t, u, args):
+    ...     b = args
     ...     u1, u2 = u
-    ...     dudt = np.array([beta*u1 - u2 + sigma*u1*(u1**2 + u2**2), u1 + beta*u2 + sigma*u2*(u1**2 + u2**2)])
-    ...     return dudt
-    >>> def hopf_phase(p, beta):
-    ...     sigma = -1
+    ...     du1dt = b*u1 - u2 + u1*(u1**2 + u2**2) - u1*(u1**2 + u2**2)**2
+    ...     du2dt = u1 + b*u2 + u2*(u1**2 + u2**2) - u2*(u1**2 + u2**2)**2
+    ...     return [du1dt, du2dt]
+    >>> def hopf_phase(p, args):
+    ...     b = args
     ...     u1, u2 = p
-    ...     p = beta*u1 - u2 + sigma*u1*(u1**2 + u2**2)
-    ...     return p 
-    >>> x0 = [1.41594778, -0.0070194] 
-    >>> period = 6.28308
-    >>> p, x = nm.continuation(hopf_normal_form, x0, period, hopf_phase, 2, -1, 11)
+    ...     p = b*u1 - u2 + u1*(u1**2 + u2**2) - u1*(u1**2 + u2**2)**2
+    ...     return p  
+    >>> x0 = [1.0, 0.0] 
+    >>> period = 6.3
+    >>> args = 2
+    >>> p_range, p_vary = [2, -1], None
+    >>> num_steps = 25
+    >>> p, x = nm.natural_parameter(hopf_normal_form, x0, period, hopf_phase, p_range, p_vary, num_steps, args)
     >>> print(p, x[:, 0])
-    [ 2.   1.7  1.4  1.1  0.8  0.5  0.2 -0.1 -0.4 -0.7 -1. ] 
-    [ 1.41594778e+00  1.30572653e+00  1.18529974e+00  1.05116564e+00    8.97197290e-01  7.10617176e-01  
-    4.52758525e-01 -1.60753498e-16  3.93514178e-39  9.31616179e-61  5.74885115e-78]
+    [ 2.     1.875  1.75   1.625  1.5    1.375  1.25   1.125  1.     0.875
+    0.75   0.625  0.5    0.375  0.25   0.125  0.    -0.125 -0.25  -0.375
+    -0.5   -0.625 -0.75  -0.875 -1.   ] [ 1.41477051e+000  1.39977270e+000  1.38415813e+000  1.36786195e+000
+    1.35080773e+000  1.33290434e+000  1.31404187e+000  1.29408574e+000
+    1.27286845e+000  1.25017733e+000  1.22573583e+000  1.19917365e+000
+    1.16997638e+000  1.13739444e+000  1.10026269e+000  1.05659364e+000
+    1.00246149e+000  9.27639773e-001  7.55432478e-001 -9.37310408e-014
+    1.77286750e-038 -4.08699198e-063  2.81256389e-092 -3.80191900e-122
+    3.69048022e-152]
     """
     
     dim = error_handle(ode, x0, period, h, args, deltat_max=0.5)
@@ -373,47 +396,25 @@ def natural_parameter(ode, x0, period: float, phase, p_range: float, p_vary: int
 
 
 def pseudo_arclength(ode, states, periods, phase, parameters, p_vary, p_final, args=None, method=eurler_method, h=0.01):
-    """Pseudo-arclength continuation investigating single parameter affect on ODE 
+    """Pseudo-arclength continuation. Investigates single parameter affect on ODE by pseudo-arclength prediction.  
 
     Args:
-        ode (function): ODE to be solved
-        states (array-like): Two initial state vectors
+        ode (function): ODE to be investigated
+        states (array-like): Two initial condition guesses
         periods (array-like): Both limit cycle period guesses
         phase (function): Phase condition
-        parameters (array-like): Two initial parameter values
-        num_steps (int): Number of pseudo-arclength operations to take
+        parameters (array-like): Two initial parameter values. The difference between these will affect the parameter variation rate
+        p_vary (int): Index position of parameter to be changed in `args`
+        p_final (float): Final parameter value to evaluate at 
         args (float, array-like): Additional ODE arguments
         method (function, optional): Function method for solving ODE {.euler_method, .midpoint_method, .runge_kutta}. Defaults to .euler_method
         h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
 
     Returns:
-        array: array of solutions. [x0 ... xn period parameter]
+        array: array of solutions. [x_1 ... x_n period parameter]
         
     Example
     -------
-    >>> def hopf_normal_form(t, u, beta):
-    ...     sigma = -1
-    ...     u1, u2 = u
-    ...     dudt = np.array([beta*u1 - u2 + sigma*u1*(u1**2 + u2**2), u1 + beta*u2 + sigma*u2*(u1**2 + u2**2)])
-    ...     return dudt
-    >>> def hopf_phase(p, beta):
-    ...     sigma = -1
-    ...     u1, u2 = p
-    ...     p = beta*u1 - u2 + sigma*u1*(u1**2 + u2**2)
-    ...     return p 
-    >>> x0 = [1.41594778, -0.0070194] 
-    >>> t0 = 6.28308
-    >>> p0 = 2 
-    >>> x1 = [1.38018573, -0.00684505]
-    >>> t1 = 6.28308
-    >>> p1 = 1.9
-    >>> v = nm.pseudo_arclength(hopf_normal_form, [x0, x1], [t0, t1], hopf_phase, [p0, p1], 5)    
-    >>> print(v)
-    [[ 1.41594778 -0.0070194   6.28308     2.        ]
-    [ 1.38018573 -0.00684505  6.28308     1.9       ]
-    [ 1.34347207 -0.00666584  6.2830807   1.80034032]
-    [ 1.30598713 -0.00648261  6.2830807   1.70096479]
-    [ 1.26748393 -0.00629417  6.2830807   1.60197335]]
     """ 
     max_iter = 100
     
