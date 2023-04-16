@@ -123,7 +123,7 @@ def midpoint_method(f, x, t, h, args=None):
     x_new = np.zeros(len(x))
     
     t_new = t + h
-    x_new = x + h*np.asarray(f(t_new + h/2, x + h/2*np.asarray(f(t, x, args)), args))       
+    x_new = x + h*np.asarray(f(t + h/2, x + h/2*np.asarray(f(t, x, args)), args))       
     
     return x_new, t_new
 
