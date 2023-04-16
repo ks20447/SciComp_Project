@@ -8,16 +8,16 @@ Author: ks20447@bristol.ac.uk (Adam Morris)
 
 numerical_methods.py library to be used for Scientific Computing Coursework
 
-\nThese include:
-    - euler_method - performs one step of the euler numerical integration method
-    - midpoint_method - performs one step of the midpoint numerical integration method
-    - runge_kutta - performs one step of the Runge-Kutta 4th order numerical integration method
-    - solve_to - evaluates a given ODE using one of the pre-defined numerical integration methods
-    - shooting - finds equilibria/limit cycles of ODE's using numerical shooting
-    - natural_parameter - investigates parameter effects on ODE equilibria/limit cycle solutions using natural parameter continuation
-    - pseudo-arclength - investigates parameter effects on ODE equilibria/limit cycle solutions using pseudo-arclength continuation
-    - graph_format - creates consistent graph formats for matplotlib.pyplot figures
-    - error_handle - captures possible user generated errors across the included numerical methods
+\nIncluded:
+    - `euler_method` - performs one step of the euler numerical integration method
+    - `midpoint_method` - performs one step of the midpoint numerical integration method
+    - `runge_kutta` - performs one step of the Runge-Kutta 4th order numerical integration method
+    - `solve_to` - evaluates a given ODE using one of the pre-defined numerical integration methods
+    - `shooting` - finds equilibria/limit cycles of ODE's using numerical shooting
+    - `natural_parameter` - investigates parameter effects on ODE equilibria/limit cycle solutions using natural parameter continuation
+    - `pseudo-arclength` - investigates parameter effects on ODE equilibria/limit cycle solutions using pseudo-arclength continuation
+    - `graph_format` - creates consistent graph formats for matplotlib.pyplot figures
+    - `error_handle` - captures possible user generated errors across the included numerical methods
 
 Potential Future Development:
 Remove requirement for users to need to specify no additional arguments
