@@ -218,7 +218,7 @@ def explicit_methods(source, a, b, d_coef, bc_left, bc_right, ic, n, t_final, me
     time = dt * np.arange(num_time)
     
     u = np.zeros((num_time, n + 1))
-    u[0, :] = ic(grid, u, args)
+    u[0, :] = ic(grid, args)
     
     a_dd, b_dd = construct_a_b_matricies(grid, bc_left, bc_right)
     
@@ -264,7 +264,7 @@ def explicit_methods(source, a, b, d_coef, bc_left, bc_right, ic, n, t_final, me
                     u[i + 1, start:-end] = sol_u + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
             else:
                 
-                sol_grid = grid[start:-end]
+                sol_grid = grid[start::]
                 
                 for i in range(num_time - 1):
                     sol_u = u[i, start::]
@@ -288,7 +288,7 @@ def implicit_methods(source, a, b, d_coef, bc_left, bc_right, ic, n, dt, t_final
     time = dt * np.arange(num_time)
     
     u = np.zeros((num_time, n + 1))
-    u[0, :] = ic(grid, u, args)
+    u[0, :] = ic(grid, args)
     
     a_dd, b_dd = construct_a_b_matricies(grid, bc_left, bc_right)
     identity = np.identity(len(a_dd))
@@ -310,15 +310,15 @@ def implicit_methods(source, a, b, d_coef, bc_left, bc_right, ic, n, dt, t_final
                 grid_sol = grid[start:-end]
                 for i in range(num_time - 1):
                     u_sol = u[i, start:-end]
-                    b = u_sol + c*b_dd + c*source(grid_sol, time[i], u_sol, args)
+                    b = u_sol + c*b_dd + source(grid_sol, time[i], u_sol, args)
                     u[i + 1, start:-end] = np.linalg.solve(a, b)
                     
             else:
                 grid_sol = grid[start::]
                 for i in range(num_time - 1):
                     u_sol = u[i, start::]
-                    b = u_sol + c*b_dd + c*source(grid_sol, time[i], u_sol, args)
-                    u[i + 1, start:-end] = np.linalg.solve(a, b)
+                    b = u_sol + c*b_dd + source(grid_sol, time[i], u_sol, args)
+                    u[i + 1, start::] = np.linalg.solve(a, b)
 
         case "Crank-Nicolson":
             
@@ -328,15 +328,20 @@ def implicit_methods(source, a, b, d_coef, bc_left, bc_right, ic, n, dt, t_final
                 grid_sol = grid[start:-end]
                 for i in range(num_time - 1):
                     u_sol = u[i, start:-end]
-                    b = ((identity + (c/2)*a_dd) @ u_sol) + c*b_dd + c*source(grid_sol, time[i], u_sol, args)
+                    b = ((identity + (c/2)*a_dd) @ u_sol) + c*b_dd + source(grid_sol, time[i], u_sol, args)
                     u[i + 1, start:-end] = np.linalg.solve(a, b)
                     
             else:
                 grid_sol = grid[start::]
                 for i in range(num_time - 1):
                     u_sol = u[i, start::]
-                    b = ((identity + (c/2)*a_dd) @ u_sol) + c*b_dd + c*source(grid_sol, time[i], u_sol, args)
+                    b = ((identity + (c/2)*a_dd) @ u_sol) + c*b_dd + source(grid_sol, time[i], u_sol, args)
                     u[i + 1, start::] = np.linalg.solve(a, b) 
                                             
                
     return grid, time, u
+
+
+def imex(source, a, b, d_coef, bc_left, bc_right, ic, n, dt, t_final, method, args):
+    
+    return 0
