@@ -253,7 +253,7 @@ def explicit_methods(source, a : float, b : float, d_coef : float,
     dx = (b - a) / n
     
     c = 0.49
-    dt = c* dx**2 / d_coef
+    dt = c*dx**2 / d_coef
     
     num_time = ceil(t_final / dt)
     time = dt * np.arange(num_time)
@@ -271,49 +271,48 @@ def explicit_methods(source, a : float, b : float, d_coef : float,
     
     pde = lambda x, t, u: (d_coef/(dx**2))*(a_dd @ u + b_dd) + source(x, t, u, args)
     
-    
     match method:
         
         case "Euler":
             if end:
                 
-                sol_grid = grid[start:-end]
+                grid_sol = grid[start:-end]
                 
                 for i in range(num_time - 1):
-                    sol_u = u[i, start:-end]
-                    u[i + 1, start:-end] = sol_u + dt*pde(sol_grid, time[i], sol_u)
+                    u_sol = u[i, start:-end]
+                    u[i + 1, start:-end] = u_sol + dt*pde(grid_sol, time[i], u_sol)
             else:
                 
-                sol_grid = grid[start::]
+                grid_sol = grid[start::]
                 
                 for i in range(num_time - 1):
-                    sol_u = u[i, start::]
-                    u[i + 1, start::] = sol_u + dt*pde(sol_grid, time[i], sol_u)
+                    u_sol = u[i, start::]
+                    u[i + 1, start::] = u_sol + dt*pde(grid_sol, time[i], u_sol)
 
                             
         case "RK4":
             if end:
                 
-                sol_grid = grid[start:-end]
+                grid_sol = grid[start:-end]
                 
                 for i in range(num_time - 1):
-                    sol_u = u[i, start:-end]
-                    k1 = pde(sol_grid, time[i], sol_u)
-                    k2 = pde(sol_grid, time[i], sol_u + dt*k1/2)
-                    k3 = pde(sol_grid, time[i], sol_u + dt*k2/2)
-                    k4 = pde(sol_grid, time[i], sol_u + dt*k3)
-                    u[i + 1, start:-end] = sol_u + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
+                    u_sol = u[i, start:-end]
+                    k1 = pde(grid_sol, time[i], u_sol)
+                    k2 = pde(grid_sol, time[i], u_sol + dt*k1/2)
+                    k3 = pde(grid_sol, time[i], u_sol + dt*k2/2)
+                    k4 = pde(grid_sol, time[i], u_sol + dt*k3)
+                    u[i + 1, start:-end] = u_sol + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
             else:
                 
-                sol_grid = grid[start::]
+                grid_sol = grid[start::]
                 
                 for i in range(num_time - 1):
-                    sol_u = u[i, start::]
-                    k1 = pde(sol_grid, time[i], sol_u)
-                    k2 = pde(sol_grid, time[i], sol_u + dt*k1/2)
-                    k3 = pde(sol_grid, time[i], sol_u + dt*k2/2)
-                    k4 = pde(sol_grid, time[i], sol_u + dt*k3)
-                    u[i + 1, start::] = sol_u + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
+                    u_sol = u[i, start::]
+                    k1 = pde(grid_sol, time[i], u_sol)
+                    k2 = pde(grid_sol, time[i], u_sol + dt*k1/2)
+                    k3 = pde(grid_sol, time[i], u_sol + dt*k2/2)
+                    k4 = pde(grid_sol, time[i], u_sol + dt*k3)
+                    u[i + 1, start::] = u_sol + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
                         
     return grid, time, u
     
@@ -392,7 +391,7 @@ def implicit_methods(source, a : float, b : float, d_coef : float,
                 grid_sol = grid[start:-end]
                 for i in range(num_time - 1):
                     u_sol = u[i, start:-end]
-                    b = u_sol + c*b_dd + source(grid_sol, time[i], u_sol, args)
+                    b = u_sol + c*b_dd + dt*source(grid_sol, time[i], u_sol, args)
                     u[i + 1, start:-end] = np.linalg.solve(a, b)
                     
             else:
@@ -424,6 +423,48 @@ def implicit_methods(source, a : float, b : float, d_coef : float,
     return grid, time, u
 
 
-def imex(source, a, b, d_coef, bc_left, bc_right, ic, n, dt, t_final, method, args):
+def imex(source, a, b, d_coef, bc_left, bc_right, ic, n, dt, t_final, args):
     
-    return 0
+    grid = np.linspace(a, b, n+1)
+    dx = (b - a) / n
+    
+    c = (dt*d_coef)/(dx**2)
+    
+    num_time = ceil(t_final / dt)
+    time = dt * np.arange(num_time)
+    
+    u = np.zeros((num_time, n + 1))
+    u[0, :] = ic(grid, args)
+    
+    a_dd, b_dd = construct_a_b_matricies(grid, bc_left, bc_right)
+    identity = np.identity(len(a_dd))
+    
+    u[:, 0] = bc_left.u_bound
+    u[:, -1] = bc_right.u_bound
+    
+    start = bc_left.sol_bound
+    end = bc_right.sol_bound
+    
+    a = identity - c*a_dd
+    
+    pde = lambda x, t, u: (d_coef/(dx**2))*(a_dd @ u + b_dd) + source(x, t, u, args)
+
+    if end:
+        grid_sol = grid[start:-end]
+        for i in range(num_time - 1):
+            u_sol = u[i, start:-end]
+            b = u_sol + c*b_dd + dt*source(grid_sol, time[i], u_sol, args)
+            u_inter = np.linalg.solve(a, b)
+            u[i + 1, start:-end] = u_inter + dt*pde(grid_sol, time[i], u_inter)
+            
+            
+    else:
+        grid_sol = grid[start::]
+        for i in range(num_time - 1):
+            u_sol = u[i, start::]
+            b = u_sol + c*b_dd + source(grid_sol, time[i], u_sol, args)
+            u_inter = np.linalg.solve(a, b)
+            u[i + 1, start::] = u_inter + dt*pde(grid_sol, time[i], u_inter)
+    
+    
+    return grid, time, u

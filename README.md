@@ -1,6 +1,6 @@
 # SciComp_Project
 
-A library containing a series of numerical methods associated with the time simulating and investigating of Oridinary and Partial Differential equations (ODE/PDE's). Created as part of the Scientific Computing module coursework for Engineering Mathematics in the University of Bristol.   
+A library containing a series of numerical methods associated with the time simulating and investigating of Ordinary and Partial Differential equations (ODE/PDE's). Created as part of the Scientific Computing module coursework for Engineering Mathematics in the University of Bristol.   
 
 ## Authors
 Adam Morris (ks20447@bristol.ac.uk)
@@ -17,7 +17,7 @@ Adam Morris (ks20447@bristol.ac.uk)
 
 Clone repo from git hub on your local git bash terminal: https://github.com/ks20447/SciComp_Project.git
 
-Use the following pip commands to install the packages and libaries required to run the file: 
+Use the following pip commands to install the packages and libraries required to run the file: 
 
 ```bash
 pip install -r requirements.txt
