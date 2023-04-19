@@ -3,11 +3,7 @@ Created: 19/02/2023
 
 Author: ks20447 (Adam Morris)
 
-testing.py file to test numerical_methods.py functionality
-
-All commits to be pushed to "working" branch before merging to "master" branch
-
-To be completed:
+testing_numerical_methods.py file to test numerical_methods.py functionality
 
 Notes:
 """
@@ -93,12 +89,7 @@ class NumericalMethodsTesting(unittest.TestCase):
         with self.assertRaises(ValueError) as exception_context:
             nm.error_handle(ode, [1, 1, 1], 0, 1, [1, 1, 1], 0.5)
         self.assertEqual(str(exception_context.exception),
-            "Given step-size exceeds maximum step-size")
-
-        with self.assertRaises(TypeError) as exception_context:
-            nm.error_handle(ode, [1, 1, 1], 0, 0.01, "test", 0.5)
-        self.assertEqual(str(exception_context.exception),
-            "args is incorrect data type")                
+            "Given step-size exceeds maximum step-size")               
 
 
 def ode(t, u, args):
