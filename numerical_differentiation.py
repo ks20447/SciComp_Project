@@ -8,13 +8,17 @@ Author: ks20447@bristol.ac.uk (Adam Morris)
 
 numerical_differntiation.py library to be used for Scientific Computing Coursework
 
-All commits to be pushed to "working" branch before merging to "master" branch
+\nIncluded:
+    - `Boundary_Condition` - Creates boundary value objects
+    - `construct_a_b_matricies` - Constructs matrix equation equivalents for ODE/PDE's 
+    - `finite_difference` - Performs finite difference method on 2nd order ODE's
+    - `explicit_methods` - Perform explicit numerical differentiation methods on PDE's
+    - `implicit_methods` - Perform implicit numerical differentiation methods on PDE's
+    - `imex` - Perform implicit-explicit numerical differentiation methods on non-linear PDE's
 
-To be completed:
 
-Notes:
-Two Neumann conditions gives singular matrix - this is a mathematical issue to do with constant of intergration
-Can however verify solutions by setting dirichlet and neumann and then flipping
+Potential Future Development:
+Re-use `numerical_methods.py` functions for appropriate methods
 """
 
 
@@ -23,11 +27,11 @@ from math import ceil
 
 
 class Boundary_Condition:
-    """Boundary Condition (BC) object to be used with finite_differnce function
+    """Boundary Condition (BC) object for use with numerical differentiation methods.
     """
 
     def __init__(self, name : str, value : float) -> None:
-        """Initialise Boundary Condition (BC) object with given name and value
+        """Initialise Boundary Condition (BC) object with given name and value.
 
         Args:
             name (str): {"Dirichlet", "Neumann", "Robin"} Type of BC
@@ -35,16 +39,17 @@ class Boundary_Condition:
             
         EXAMPLE
         -------
-        >>> bc_left = Boundary_Condition("Dirichlet", 0.0)  
+        >>> bc_left = Boundary_Condition("Dirichlet", 0.0) 
+        >>> bc_left = Boundary_Condition("Neumann", 0.5) 
         >>> bc_right = Boundary_Condition("Robin", [1.0, 1.0])
         """
         
         
         self.name = name
-        self.value = value
+        self.value = np.asarray(value)
             
     def calc_values(self, dx):
-        """Calculates appropriate values to be used in finite difference matrix construction depending on BC
+        """Calculates appropriate values to be used in matrix construction depending on BC type.
 
         Args:
             dx (float): Discretization step-size
@@ -95,7 +100,18 @@ class Boundary_Condition:
         return n
 
 
-def construct_a_b_matricies(grid, bc_left, bc_right):
+def construct_a_b_matricies(grid, bc_left : Boundary_Condition, bc_right : Boundary_Condition):
+    """Constructs A and B matricies that represent defined ODE/PDE for use with numerical differentiation.
+
+    Args:
+        grid (array-like): Discretization grid
+        bc_left (object): Initial (left) BC
+        bc_right (object): Final (Right) BC
+
+    Returns:
+        array: A matrix
+        array: B matrix
+    """
     
     a = grid[0]
     b = grid[-1]
@@ -104,48 +120,51 @@ def construct_a_b_matricies(grid, bc_left, bc_right):
     
     n += bc_left.calc_values(dx) + bc_right.calc_values(dx) - 1 # Forumla to determine size of matrices depending on BC types 
     
-    a_dd = np.zeros((n, n))
-    b_dd = np.zeros(n)
+    a_mat = np.zeros((n, n))
+    b_mat = np.zeros(n)
     
     for i in range(n):
-        a_dd[i, i] = -2
+        a_mat[i, i] = -2
     for i in range(n-1):
-        a_dd[i, i+1] = 1
-        a_dd[i+1, i] = 1
+        a_mat[i, i+1] = 1
+        a_mat[i+1, i] = 1
         
-    a_dd[0, 0:2] = bc_left.a_bound
-    a_dd[-1, -2::] = np.flip(bc_right.a_bound)
+    a_mat[0, 0:2] = bc_left.a_bound
+    a_mat[-1, -2::] = np.flip(bc_right.a_bound)
         
-    b_dd[0] = bc_left.b_bound
-    b_dd[-1] = bc_right.b_bound
+    b_mat[0] = bc_left.b_bound
+    b_mat[-1] = bc_right.b_bound
     
-    return a_dd, b_dd
+    return a_mat, b_mat
     
 
 def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition, bc_right : Boundary_Condition, n : int, args):
-    """Finite difference method to solve 2nd order PDE with source term, two boundary conditions (bc) in n steps
+    """Finite difference method to solve 2nd order ODE with source term, two boundary conditions (BC) in n steps.
 
     Args:
-        source (function): source term of PDE. Function that returns a single value (can be dependant on x)
-        a (float): x value that the left bc is evaluated at
-        b (float): x value that the right bc is evaluated at
-        bc_left (object): Initial (left) bc
-        bc_right (object): Final (Right) bc
+        source (function): Source term of ODE
+        a (float): x value that the left BC is evaluated at
+        b (float): x value that the right BC is evaluated at
+        bc_left (object): Initial (left) BC
+        bc_right (object): Final (Right) BC
         n (int): Number of steps
+        args (float, array-like): Additional ODE parameters
 
     Returns:
-        array: linearly spaced grid values from a to b
-        array: solution to PDE
+        array: linearly spaced grid values from `a` to `b`
+        array: solution to ODE
         
     EXAMPLE
     -------
-    >>> def source(x, u):
-    ...     f = 1
+    >>> def source(x, u, args):
+    ...     D = args
+    ...     f = 1/D
     ...     return f
     >>> bc_left = nd.Boundary_Condition("Dirichlet", 0.0)
     >>> bc_right = nd.Boundary_Condition("Dirichlet", 1.0)
     >>> a, b = 0, 1
-    >>> x, u = nd.finite_difference(source, a, b, bc_left, bc_right, 10)
+    >>> x, u = nd.finite_difference(source, a, b, bc_left, bc_right, 10, 1)
+    >>> print(x, u)
     [0.  0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1. ]
     [0.    0.145 0.28  0.405 0.52  0.625 0.72  0.805 0.88  0.945 1.   ]
     """
@@ -188,24 +207,46 @@ def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition
     return grid, u
 
 
-def explicit_methods(source, a, b, d_coef, bc_left, bc_right, ic, n, t_final, method, args):
-    """Method of lines using Runge-Kutta 4th order to solve (linear) diffusion equation from time 0 to time t_final, in n spacial steps
+def explicit_methods(source, a : float, b : float, d_coef : float,
+                     bc_left : Boundary_Condition, bc_right : Boundary_Condition, 
+                     ic, n : float, t_final : float, method : str, args):
+    """Explicit numerical differentiation used to solve PDE's from time 0 to time `t_final`, in `n` spacial steps, with an initial condition. 
 
     Args:
-        source (func): NOT YET IMPLEMENTED. Source PDE term
-        a (float): x value that the left bc is evaluated at
-        b (float): x value that the right bc is evaluated at
+        source (func): PDE source term
+        a (float): x value that the left BC is evaluated at
+        b (float): x value that the right BC is evaluated at
         d_coef (float): Diffusion coefficient
-        bc_left (object): Initial (left) bc
-        bc_right (object): Final (Right) bc
-        ic (func): Initial condition of PDE
+        bc_left (object): Initial (left) BC
+        bc_right (object): Final (Right) BC
+        ic (func): Initial condition
         n (int): Number of steps
         t_final (float): Time to solve PDE until (from zero)
+        method (str): Explicit method type. {'Euler', 'RK4'}
+        args (float, array-like): Additional PDE parameters
 
     Returns:
         array: spacial grid
         array: time grid
         array: solution to PDE 
+        
+    EXAMPLE
+    -------    
+    >>> def pde(x, t, u, args):
+    ...     return 1
+    >>> a, b = 0, 1
+    >>> d_coef = 0.1
+    >>> bc_left = nd.Boundary_Condition("Dirichlet", 1.0)
+    >>> bc_right = nd.Boundary_Condition("Neumann", 0.0)
+    >>> ic = lambda x, args: 0
+    >>> n = 10
+    >>> t_final = 1
+    >>> args = 2
+    >>> grid, time, u = nd.explicit_methods(pde, a, b, d_coef, bc_left, bc_right, ic, n, t_final, "Euler", args)
+    >>> print(grid, time, u[-1, :])        
+    [0.  0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1. ] [0.    0.049 0.098 0.147 0.196 0.245 0.294 0.343 0.392 0.441 0.49  0.539
+    0.588 0.637 0.686 0.735 0.784 0.833 0.882 0.931 0.98 ] [1.         1.13089095 1.19115512 1.19458151 1.17707801 1.13556941
+    1.10204063 1.06303271 1.04156582 1.02192404 1.02022076]
     """
     
     grid = np.linspace(a, b, n+1)
@@ -277,7 +318,48 @@ def explicit_methods(source, a, b, d_coef, bc_left, bc_right, ic, n, t_final, me
     return grid, time, u
     
     
-def implicit_methods(source, a, b, d_coef, bc_left, bc_right, ic, n, dt, t_final, method, args):
+def implicit_methods(source, a : float, b : float, d_coef : float,
+                     bc_left : Boundary_Condition, bc_right : Boundary_Condition,
+                     ic, n : int, dt : float, t_final : float, method : str, args):
+    """Implicit numerical differentiation used to solve PDE's from time 0 to time `t_final`, in `n` spacial steps, `dt` time step-size with an initial condition. 
+
+    Args:
+        source (func): PDE source term
+        a (float): x value that the left BC is evaluated at
+        b (float): x value that the right BC is evaluated at
+        d_coef (float): Diffusion coefficient
+        bc_left (object): Initial (left) BC
+        bc_right (object): Final (Right) BC
+        ic (func): Initial condition
+        n (int): Number of steps
+        dt (float): Time step-size
+        t_final (float): Time to solve PDE until (from zero)
+        method (str): Explicit method type. {'Euler', 'Crank-Nicolson'}
+        args (float, array-like): Additional PDE parameters
+
+    Returns:
+        array: spacial grid
+        array: time grid
+        array: solution to PDE 
+    
+    EXAMPLE
+    -------
+    >>> def pde(x, t, u, args):
+    ...     return 1
+    >>> a, b = 0, 1
+    >>> d_coef = 0.1
+    >>> bc_left = nd.Boundary_Condition("Dirichlet", 1.0)
+    >>> bc_right = nd.Boundary_Condition("Neumann", 0.0)
+    >>> ic = lambda x, args: 0
+    >>> n = 10
+    >>> t_final = 1
+    >>> args = 2        
+    >>> grid, time, u = nd.implicit_methods(pde, a, b, d_coef, bc_left, bc_right, ic, n, dt, t_final, "Crank-Nicolson", args)
+    >>> print(grid, time, u[-1, :])        
+    [0.  0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1. ] [0.  0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9] [1.         3.72357893 5.64365386 6.94500804 7.79100529 8.31743467
+    8.63030718 8.80727205 8.90140592 8.94600416 8.95899802]    
+    """
+    
     
     grid = np.linspace(a, b, n+1)
     dx = (b - a) / n
