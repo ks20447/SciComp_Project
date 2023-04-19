@@ -7,7 +7,9 @@ Adam Morris (ks20447@bristol.ac.uk)
 ## Table of Contents
 - Installation
 - Usage
+- Example
 - Contributing
+- Credit
 
 ## Installation
 
