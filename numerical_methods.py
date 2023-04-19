@@ -16,6 +16,7 @@ numerical_methods.py library to be used for Scientific Computing Coursework
     - `shooting` - finds equilibria/limit cycles of ODE's using numerical shooting
     - `natural_parameter` - investigates parameter effects on ODE equilibria/limit cycle solutions using natural parameter continuation
     - `pseudo-arclength` - investigates parameter effects on ODE equilibria/limit cycle solutions using pseudo-arclength continuation
+    - `min_func` - function to be minimised to find limit cycles 
     - `graph_format` - creates consistent graph formats for matplotlib.pyplot figures
     - `error_handle` - captures possible user generated errors across the included numerical methods
 
@@ -323,7 +324,7 @@ def natural_parameter(ode, x0, period: float, phase, p_range: float, p_vary: int
         h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
 
     Returns:
-        array: array of parameter values
+        array: array of evaluated parameter values
         array: array of state vector solutions
         
     Example
@@ -398,7 +399,8 @@ def pseudo_arclength(ode, states, periods, phase, parameters, p_vary, p_final, a
         h (float, optional): Step-size to be used in ODE solution method. Defaults to 0.01
 
     Returns:
-        array: array of solutions. [x_1 ... x_n period parameter]
+        array: array of evaluated parameter values.
+        array: array of solutions.
         
     Example
     -------
@@ -461,6 +463,21 @@ def pseudo_arclength(ode, states, periods, phase, parameters, p_vary, p_final, a
     
 
 def min_func(ode, x0, period, h, method, phase, args, arclength=None):
+    """Function to be minimised when looking for ODE limit cycles.
+
+    Args:
+        ode (function): ODE to be investigated
+        x0 (float, array-like): Initial condition guess
+        period (float): Limit cycle period guess
+        h (float): Step-size
+        method (function): Function method for solving ODE {.euler, .midpoint, .runge_kutta}
+        phase (function): Phase condition
+        args (float, array-like): Additional ODE arguments
+        arclength (array-like, optional): Should contain pseudo-arclength values if required [guess, prediction, secant]. Defaults to None.
+
+    Returns:
+        array: values being minimised
+    """
     
     sols = solve_to(ode, x0, 0, period, h, method, args)[0]
     f = sols[0, :] - sols[-1, :]

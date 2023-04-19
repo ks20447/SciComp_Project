@@ -16,7 +16,6 @@ numerical_differntiation.py library to be used for Scientific Computing Coursewo
     - `implicit_methods` - Perform implicit numerical differentiation methods on PDE's
     - `imex` - Perform implicit-explicit numerical differentiation methods on non-linear PDE's
 
-
 Potential Future Development:
 Re-use `numerical_methods.py` functions for appropriate methods
 """
@@ -139,7 +138,7 @@ def construct_a_b_matricies(grid, bc_left : Boundary_Condition, bc_right : Bound
     
 
 def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition, bc_right : Boundary_Condition, n : int, args):
-    """Finite difference method to solve 2nd order ODE with source term, two boundary conditions (BC) in n steps.
+    """Finite difference method to solve 2nd order ODE's with source term, two boundary conditions (BC) in n steps.
 
     Args:
         source (function): Source term of ODE
@@ -210,7 +209,7 @@ def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition
 def explicit_methods(source, a : float, b : float, d_coef : float,
                      bc_left : Boundary_Condition, bc_right : Boundary_Condition, 
                      ic, n : float, t_final : float, method : str, args):
-    """Explicit numerical differentiation used to solve PDE's from time 0 to time `t_final`, in `n` spacial steps, with an initial condition. 
+    """Explicit numerical differentiation used to solve 2nd Order PDE's from time 0 to time `t_final`, in `n` spacial steps, with an initial condition. 
 
     Args:
         source (func): PDE source term
@@ -320,7 +319,8 @@ def explicit_methods(source, a : float, b : float, d_coef : float,
 def implicit_methods(source, a : float, b : float, d_coef : float,
                      bc_left : Boundary_Condition, bc_right : Boundary_Condition,
                      ic, n : int, dt : float, t_final : float, method : str, args):
-    """Implicit numerical differentiation used to solve PDE's from time 0 to time `t_final`, in `n` spacial steps, `dt` time step-size with an initial condition. 
+    """Implicit numerical differentiation used to solve 2nd Order PDE's from time 0 to time `t_final`, in `n` spacial steps, `dt` time step-size with an initial condition.
+    *Note: Should only be used for linear PDE systems* 
 
     Args:
         source (func): PDE source term
@@ -424,6 +424,45 @@ def implicit_methods(source, a : float, b : float, d_coef : float,
 
 
 def imex(source, a, b, d_coef, bc_left, bc_right, ic, n, dt, t_final, args):
+    """Implicit-Explicit Euler method used to solve 2nd Order PDE's from time 0 to time `t_final`, in `n` spacial steps, `dt` time step-size with an initial condition.
+
+    Args:
+        source (func): PDE source term
+        a (float): x value that the left BC is evaluated at
+        b (float): x value that the right BC is evaluated at
+        d_coef (float): Diffusion coefficient
+        bc_left (object): Initial (left) BC
+        bc_right (object): Final (Right) BC
+        ic (func): Initial condition
+        n (int): Number of steps
+        dt (float): Time step-size
+        t_final (float): Time to solve PDE until (from zero)
+        args (float, array-like): Additional PDE parameters
+
+    Returns:
+        array: spacial grid
+        array: time grid
+        array: solution to PDE 
+        
+    EXAMPLE
+    -------
+    >>> import numerical_differentiation as nd
+    >>> def pde(x, t, u, args):
+    ...     return u**2
+    >>> a, b = 0, 1
+    >>> d_coef = 1.0
+    >>> bc_left = nd.Boundary_Condition("Dirichlet", 1.0)
+    >>> bc_right = nd.Boundary_Condition("Dirichlet", 1.0)
+    >>> ic = lambda x, args: 1
+    >>> n = 10
+    >>> dt, t_final = 0.1, 1
+    >>> args = None
+    >>> grid, time, u = nd.imex(pde, a, b, d_coef, bc_left, bc_right, ic, n, dt, t_final, args)
+    >>> print(grid, time, u[-1, :])
+    [0.  0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1. ] [0.  0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9] [1.         1.060927   1.10259983 1.13343125 1.15311294 1.15992139
+    1.15311294 1.13343125 1.10259983 1.060927   1.        ]
+    """
+    
     
     grid = np.linspace(a, b, n+1)
     dx = (b - a) / n
