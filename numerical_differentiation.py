@@ -155,6 +155,7 @@ def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition
         bc_right (object): Final (Right) BC
         n (int): Number of steps
         args (float, array-like): Additional ODE parameters
+        sparse (bool, optional): Option to use sparse matricies. Defaults to False
 
     Returns:
         array: linearly spaced grid values from `a` to `b`
@@ -349,6 +350,7 @@ def implicit_methods(source, a : float, b : float, d_coef : float,
         t_final (float): Time to solve PDE until (from zero)
         method (str): Explicit method type. {'Euler', 'Crank-Nicolson'}
         args (float, array-like): Additional PDE parameters
+        sparse (bool, optional): Option to use sparse matricies. Defaults to False
 
     Returns:
         array: spacial grid
@@ -461,6 +463,7 @@ def imex(source, a : float, b : float, d_coef : float,
         dt (float): Time step-size
         t_final (float): Time to solve PDE until (from zero)
         args (float, array-like): Additional PDE parameters
+        sparse (bool, optional): Option to use sparse matricies. Defaults to False
 
     Returns:
         array: spacial grid
