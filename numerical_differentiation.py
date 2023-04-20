@@ -16,13 +16,13 @@ numerical_differntiation.py library to be used for Scientific Computing Coursewo
     - `implicit_methods` - Perform implicit numerical differentiation methods on PDE's
     - `imex` - Perform implicit-explicit numerical differentiation methods on non-linear PDE's
 
-
 Potential Future Development:
 Re-use `numerical_methods.py` functions for appropriate methods
 """
 
 
 import numpy as np
+from scipy.sparse import csr_matrix, linalg
 from math import ceil
 
 
@@ -100,7 +100,7 @@ class Boundary_Condition:
         return n
 
 
-def construct_a_b_matricies(grid, bc_left : Boundary_Condition, bc_right : Boundary_Condition):
+def construct_a_b_matricies(grid, bc_left : Boundary_Condition, bc_right : Boundary_Condition, sparse=False):
     """Constructs A and B matricies that represent defined ODE/PDE for use with numerical differentiation.
 
     Args:
@@ -120,26 +120,32 @@ def construct_a_b_matricies(grid, bc_left : Boundary_Condition, bc_right : Bound
     
     n += bc_left.calc_values(dx) + bc_right.calc_values(dx) - 1 # Forumla to determine size of matrices depending on BC types 
     
-    a_mat = np.zeros((n, n))
-    b_mat = np.zeros(n)
+    # Values for the main, sub, super diagonal
+    main_diag = np.full(n, -2.0)
+    sub_diag = np.full(n - 1, 1.0)
+    super_diag = np.full(n - 1, 1.0)
     
-    for i in range(n):
-        a_mat[i, i] = -2
-    for i in range(n-1):
-        a_mat[i, i+1] = 1
-        a_mat[i+1, i] = 1
+    # Tridiagonal matrix formation
+    a_mat = np.diag(main_diag) + np.diag(sub_diag, k=-1) + np.diag(super_diag, k=1)
+    a_mat = np.asarray(a_mat)
         
-    a_mat[0, 0:2] = bc_left.a_bound
-    a_mat[-1, -2::] = np.flip(bc_right.a_bound)
+    a_mat[0, 0], a_mat[0, 1] = bc_left.a_bound[0], bc_left.a_bound[1]
+    a_mat[-1, -1], a_mat[-1, -2] = bc_right.a_bound[0], bc_right.a_bound[1]
+    
+    b_mat = np.zeros((n, 1))
         
     b_mat[0] = bc_left.b_bound
     b_mat[-1] = bc_right.b_bound
     
+    if sparse:
+        a_mat = csr_matrix(a_mat)
+        b_mat = csr_matrix(b_mat)
+    
     return a_mat, b_mat
     
 
-def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition, bc_right : Boundary_Condition, n : int, args):
-    """Finite difference method to solve 2nd order ODE with source term, two boundary conditions (BC) in n steps.
+def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition, bc_right : Boundary_Condition, n : int, args, sparse=False):
+    """Finite difference method to solve 2nd order ODE's with source term, two boundary conditions (BC) in n steps.
 
     Args:
         source (function): Source term of ODE
@@ -149,6 +155,7 @@ def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition
         bc_right (object): Final (Right) BC
         n (int): Number of steps
         args (float, array-like): Additional ODE parameters
+        sparse (bool, optional): Option to use sparse matricies. Defaults to False
 
     Returns:
         array: linearly spaced grid values from `a` to `b`
@@ -170,36 +177,43 @@ def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition
     """
     
     
-    grid = np.linspace(a, b, n+1)
+    grid = np.linspace(a, b, n + 1)
     dx = (b - a) / n
-    
-    u = np.zeros(n + 1)
-    q = np.zeros(n + 1)
-    
-    a_dd, b_dd = construct_a_b_matricies(grid, bc_left, bc_right)
-    
+
+    u = np.zeros((n + 1, 1))
+
+    if sparse:
+        array_type = csr_matrix
+        solver = linalg.spsolve
+        a_dd, b_dd = construct_a_b_matricies(grid, bc_left, bc_right, sparse)
+    else:
+        array_type = np.array
+        solver = np.linalg.solve
+        a_dd, b_dd = construct_a_b_matricies(grid, bc_left, bc_right, sparse)
+            
     u[0] = bc_left.u_bound
     u[-1] = bc_right.u_bound
-    
+        
     start = bc_left.sol_bound
-    end = bc_right.sol_bound
-    
+    end = bc_right.sol_bound    
+        
     if end:
-        u[start:-end] = np.linalg.solve(a_dd, -b_dd - q[start:-end])
+        u[start:-end] = solver(a_dd, -b_dd).reshape(b_dd.shape)
     else:
-        u[start::] = np.linalg.solve(a_dd, -b_dd - q[start::])
+        u[start::] = solver(a_dd, -b_dd).reshape(b_dd.shape)
         
     u_old = np.zeros_like(u)
     itr = 0
+    q = array_type(np.zeros((n + 1, 1)))
         
     while np.max(np.abs(u - u_old)) > 1e-6 and itr < 100:
-        u_old[:] = u[:]
-        q[:] = (dx**2)*source(grid[:], u_old[:], args)
+        u_old = u
+        q[:] = array_type((dx**2)*source(grid, u_old, args))
         
         if end:
-            u[start:-end] = np.linalg.solve(a_dd, -b_dd - q[start:-end])
+            u[start:-end] = solver(a_dd, -b_dd - q[start:-end]).reshape(b_dd.shape)
         else:
-            u[start::] = np.linalg.solve(a_dd, -b_dd - q[start::])
+            u[start::] = solver(a_dd, -b_dd - q[start::]).reshape(b_dd.shape)
             
         itr += 1
         
@@ -210,7 +224,7 @@ def finite_difference(source, a : float, b : float, bc_left : Boundary_Condition
 def explicit_methods(source, a : float, b : float, d_coef : float,
                      bc_left : Boundary_Condition, bc_right : Boundary_Condition, 
                      ic, n : float, t_final : float, method : str, args):
-    """Explicit numerical differentiation used to solve PDE's from time 0 to time `t_final`, in `n` spacial steps, with an initial condition. 
+    """Explicit numerical differentiation used to solve 2nd Order PDE's from time 0 to time `t_final`, in `n` spacial steps, with an initial condition. 
 
     Args:
         source (func): PDE source term
@@ -249,79 +263,79 @@ def explicit_methods(source, a : float, b : float, d_coef : float,
     1.10204063 1.06303271 1.04156582 1.02192404 1.02022076]
     """
     
-    grid = np.linspace(a, b, n+1)
+    grid = np.linspace(a, b, n+1).reshape(n + 1, 1)
     dx = (b - a) / n
     
     c = 0.49
-    dt = c* dx**2 / d_coef
+    dt = c*dx**2 / d_coef
     
     num_time = ceil(t_final / dt)
     time = dt * np.arange(num_time)
     
-    u = np.zeros((num_time, n + 1))
-    u[0, :] = ic(grid, args)
+    a_dd, b_dd = construct_a_b_matricies(grid, bc_left, bc_right, sparse=False)
     
-    a_dd, b_dd = construct_a_b_matricies(grid, bc_left, bc_right)
-    
-    u[:, 0] = bc_left.u_bound
-    u[:, -1] = bc_right.u_bound
+    u = np.zeros((n + 1, num_time))
+    u[:, 0:1] = ic(grid, args)
+    u[0, :] = bc_left.u_bound
+    u[-1, :] = bc_right.u_bound
     
     start = bc_left.sol_bound
     end = bc_right.sol_bound
     
     pde = lambda x, t, u: (d_coef/(dx**2))*(a_dd @ u + b_dd) + source(x, t, u, args)
     
-    
     match method:
         
         case "Euler":
             if end:
                 
-                sol_grid = grid[start:-end]
+                grid_sol = grid[start:-end]
                 
                 for i in range(num_time - 1):
-                    sol_u = u[i, start:-end]
-                    u[i + 1, start:-end] = sol_u + dt*pde(sol_grid, time[i], sol_u)
+                    u_sol = u[start:-end, i:i+1]
+                    u[start:-end, i+1:i+2] = u_sol + dt*pde(grid_sol, time[i], u_sol)
             else:
                 
-                sol_grid = grid[start::]
+                grid_sol = grid[start::]
                 
                 for i in range(num_time - 1):
-                    sol_u = u[i, start::]
-                    u[i + 1, start::] = sol_u + dt*pde(sol_grid, time[i], sol_u)
+                    u_sol = u[start::, i:i+1]
+                    u[start::, i+1:i+2] = u_sol + dt*pde(grid_sol, time[i], u_sol)
 
                             
         case "RK4":
             if end:
                 
-                sol_grid = grid[start:-end]
+                grid_sol = grid[start:-end]
                 
                 for i in range(num_time - 1):
-                    sol_u = u[i, start:-end]
-                    k1 = pde(sol_grid, time[i], sol_u)
-                    k2 = pde(sol_grid, time[i], sol_u + dt*k1/2)
-                    k3 = pde(sol_grid, time[i], sol_u + dt*k2/2)
-                    k4 = pde(sol_grid, time[i], sol_u + dt*k3)
-                    u[i + 1, start:-end] = sol_u + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
+                    u_sol = u[start:-end, i:i+1]
+                    k1 = pde(grid_sol, time[i], u_sol)
+                    k2 = pde(grid_sol, time[i] + dt/2, u_sol + dt*k1/2)
+                    k3 = pde(grid_sol, time[i] + dt/2, u_sol + dt*k2/2)
+                    k4 = pde(grid_sol, time[i] + dt, u_sol + dt*k3)
+                    u[start:-end, i+1:i+2] = u_sol + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
             else:
                 
-                sol_grid = grid[start::]
+                grid_sol = grid[start::]
                 
                 for i in range(num_time - 1):
-                    sol_u = u[i, start::]
-                    k1 = pde(sol_grid, time[i], sol_u)
-                    k2 = pde(sol_grid, time[i], sol_u + dt*k1/2)
-                    k3 = pde(sol_grid, time[i], sol_u + dt*k2/2)
-                    k4 = pde(sol_grid, time[i], sol_u + dt*k3)
-                    u[i + 1, start::] = sol_u + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
+                    u_sol = u[start::, i:i+1]
+                    k1 = pde(grid_sol, time[i], u_sol)
+                    k2 = pde(grid_sol, time[i] + dt/2, u_sol + dt*k1/2)
+                    k3 = pde(grid_sol, time[i] + dt/2, u_sol + dt*k2/2)
+                    k4 = pde(grid_sol, time[i] + dt, u_sol + dt*k3)
+                    u[start::, i+1:i+2] = u_sol + (dt/6)*(k1 + 2*k2 + 2*k3 + k4)
+                  
                         
     return grid, time, u
     
     
 def implicit_methods(source, a : float, b : float, d_coef : float,
                      bc_left : Boundary_Condition, bc_right : Boundary_Condition,
-                     ic, n : int, dt : float, t_final : float, method : str, args):
-    """Implicit numerical differentiation used to solve PDE's from time 0 to time `t_final`, in `n` spacial steps, `dt` time step-size with an initial condition. 
+                     ic, n : int, dt : float, t_final : float, method : str, args, sparse=False):
+    """Implicit numerical differentiation used to solve 2nd Order PDE's from time 0 to time `t_final`, in `n` spacial steps, `dt` time step-size with an initial condition.
+    *Note: Should only be used for linear PDE systems* 
 
     Args:
         source (func): PDE source term
@@ -336,6 +350,7 @@ def implicit_methods(source, a : float, b : float, d_coef : float,
         t_final (float): Time to solve PDE until (from zero)
         method (str): Explicit method type. {'Euler', 'Crank-Nicolson'}
         args (float, array-like): Additional PDE parameters
+        sparse (bool, optional): Option to use sparse matricies. Defaults to False
 
     Returns:
         array: spacial grid
@@ -361,7 +376,7 @@ def implicit_methods(source, a : float, b : float, d_coef : float,
     """
     
     
-    grid = np.linspace(a, b, n+1)
+    grid = np.linspace(a, b, n+1).reshape(n + 1, 1)
     dx = (b - a) / n
     
     c = (dt*d_coef)/(dx**2)
@@ -369,14 +384,21 @@ def implicit_methods(source, a : float, b : float, d_coef : float,
     num_time = ceil(t_final / dt)
     time = dt * np.arange(num_time)
     
-    u = np.zeros((num_time, n + 1))
-    u[0, :] = ic(grid, args)
-    
-    a_dd, b_dd = construct_a_b_matricies(grid, bc_left, bc_right)
-    identity = np.identity(len(a_dd))
-    
-    u[:, 0] = bc_left.u_bound
-    u[:, -1] = bc_right.u_bound
+    if sparse:
+        array_type = csr_matrix
+        solver = linalg.spsolve
+        a_dd, b_dd = construct_a_b_matricies(grid, bc_left, bc_right, sparse)
+    else:
+        array_type = np.array
+        solver = np.linalg.solve
+        a_dd, b_dd = construct_a_b_matricies(grid, bc_left, bc_right, sparse)
+        
+    u = np.zeros((n + 1, num_time))
+    u[:, 0:1] = ic(grid, args)
+    u[0, :] = bc_left.u_bound
+    u[-1, :] = bc_right.u_bound
+
+    identity = array_type(np.eye(a_dd.shape[0]))
     
     start = bc_left.sol_bound
     end = bc_right.sol_bound
@@ -391,16 +413,16 @@ def implicit_methods(source, a : float, b : float, d_coef : float,
             if end:
                 grid_sol = grid[start:-end]
                 for i in range(num_time - 1):
-                    u_sol = u[i, start:-end]
-                    b = u_sol + c*b_dd + source(grid_sol, time[i], u_sol, args)
-                    u[i + 1, start:-end] = np.linalg.solve(a, b)
+                    u_sol = u[start:-end, i:i+1]
+                    b = array_type(u_sol + c*b_dd + dt*source(grid_sol, time[i], u_sol, args))
+                    u[start:-end, i+1:i+2] = solver(a, b).reshape(b.shape)
                     
             else:
                 grid_sol = grid[start::]
                 for i in range(num_time - 1):
-                    u_sol = u[i, start::]
-                    b = u_sol + c*b_dd + source(grid_sol, time[i], u_sol, args)
-                    u[i + 1, start::] = np.linalg.solve(a, b)
+                    u_sol = u[start::, i:i+1]
+                    b = array_type(u_sol + c*b_dd + source(grid_sol, time[i], u_sol, args))
+                    u[start::, i+1:i+2] = solver(a, b).reshape(b.shape)
 
         case "Crank-Nicolson":
             
@@ -409,21 +431,111 @@ def implicit_methods(source, a : float, b : float, d_coef : float,
             if end:
                 grid_sol = grid[start:-end]
                 for i in range(num_time - 1):
-                    u_sol = u[i, start:-end]
-                    b = ((identity + (c/2)*a_dd) @ u_sol) + c*b_dd + source(grid_sol, time[i], u_sol, args)
-                    u[i + 1, start:-end] = np.linalg.solve(a, b)
+                    u_sol = u[start:-end, i:i+1]
+                    b = array_type(((identity + (c/2)*a_dd) @ u_sol) + c*b_dd + source(grid_sol, time[i], u_sol, args))
+                    u[start:-end, i+1:i+2] = solver(a, b).reshape(b.shape)
                     
             else:
                 grid_sol = grid[start::]
                 for i in range(num_time - 1):
-                    u_sol = u[i, start::]
-                    b = ((identity + (c/2)*a_dd) @ u_sol) + c*b_dd + source(grid_sol, time[i], u_sol, args)
-                    u[i + 1, start::] = np.linalg.solve(a, b) 
+                    u_sol = u[start::, i:i+1]
+                    b = array_type(((identity + (c/2)*a_dd) @ u_sol) + c*b_dd + source(grid_sol, time[i], u_sol, args))
+                    u[start::, i+1:i+2] = solver(a, b).reshape(b.shape)
                                             
                
     return grid, time, u
 
 
-def imex(source, a, b, d_coef, bc_left, bc_right, ic, n, dt, t_final, method, args):
+def imex(source, a : float, b : float, d_coef : float,
+         bc_left : Boundary_Condition, bc_right : Boundary_Condition,
+         ic, n : int, dt : float, t_final : float, args, sparse=False):
+    """Implicit-Explicit Euler method used to solve 2nd Order PDE's from time 0 to time `t_final`, in `n` spacial steps, `dt` time step-size with an initial condition.
+
+    Args:
+        source (func): PDE source term
+        a (float): x value that the left BC is evaluated at
+        b (float): x value that the right BC is evaluated at
+        d_coef (float): Diffusion coefficient
+        bc_left (object): Initial (left) BC
+        bc_right (object): Final (Right) BC
+        ic (func): Initial condition
+        n (int): Number of steps
+        dt (float): Time step-size
+        t_final (float): Time to solve PDE until (from zero)
+        args (float, array-like): Additional PDE parameters
+        sparse (bool, optional): Option to use sparse matricies. Defaults to False
+
+    Returns:
+        array: spacial grid
+        array: time grid
+        array: solution to PDE 
+        
+    EXAMPLE
+    -------
+    >>> import numerical_differentiation as nd
+    >>> def pde(x, t, u, args):
+    ...     return u**2
+    >>> a, b = 0, 1
+    >>> d_coef = 1.0
+    >>> bc_left = nd.Boundary_Condition("Dirichlet", 1.0)
+    >>> bc_right = nd.Boundary_Condition("Dirichlet", 1.0)
+    >>> ic = lambda x, args: 1
+    >>> n = 10
+    >>> dt, t_final = 0.1, 1
+    >>> args = None
+    >>> grid, time, u = nd.imex(pde, a, b, d_coef, bc_left, bc_right, ic, n, dt, t_final, args)
+    >>> print(grid, time, u[-1, :])
+    [0.  0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1. ] [0.  0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9] [1.         1.060927   1.10259983 1.13343125 1.15311294 1.15992139
+    1.15311294 1.13343125 1.10259983 1.060927   1.        ]
+    """
     
-    return 0
+    
+    grid = np.linspace(a, b, n+1).reshape(n + 1, 1)
+    dx = (b - a) / n
+    
+    c = (dt*d_coef)/(dx**2)
+    
+    num_time = ceil(t_final / dt)
+    time = dt * np.arange(num_time)
+    
+    if sparse:
+        array_type = csr_matrix
+        solver = linalg.spsolve
+        a_dd, b_dd = construct_a_b_matricies(grid, bc_left, bc_right, sparse)
+    else:
+        array_type = np.array
+        solver = np.linalg.solve
+        a_dd, b_dd = construct_a_b_matricies(grid, bc_left, bc_right, sparse)
+    
+    u = np.zeros((n + 1, num_time))
+    u[:, 0:1] = ic(grid, args)
+    u[0, :] = bc_left.u_bound
+    u[-1, :] = bc_right.u_bound
+
+    identity = array_type(np.eye(a_dd.shape[0]))
+    
+    start = bc_left.sol_bound
+    end = bc_right.sol_bound
+    
+    a = identity - c*a_dd
+    
+    pde = lambda x, t, u: (d_coef/(dx**2))*(a_dd @ u + b_dd) + source(x, t, u, args)
+
+    if end:
+        grid_sol = grid[start:-end]
+        for i in range(num_time - 1):
+            u_sol = u[start:-end, i:i+1]
+            b = u_sol + c*b_dd + dt*source(grid_sol, time[i], u_sol, args)
+            u_inter = solver(a, b).reshape(b.shape)
+            u[start:-end, i+1:i+2] = u_inter + dt*pde(grid_sol, time[i], u_inter)
+            
+    else:
+        grid_sol = grid[start::]
+        for i in range(num_time - 1):
+            u_sol = u[start::, i:i+1]
+            b = array_type(u_sol + c*b_dd + source(grid_sol, time[i], u_sol, args))
+            u_inter = solver(a, b).reshape(b.shape)
+            u[start::, i+1:i+2] = u_inter + dt*pde(grid_sol, time[i], u_inter)
+    
+    
+    return grid, time, u
