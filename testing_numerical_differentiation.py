@@ -50,14 +50,14 @@ class NumericalMethodsTesting(unittest.TestCase):
         a_mat, b_mat = nd.construct_a_b_matricies(grid, nd.Boundary_Condition("Dirichlet", 1.0),
                                                   nd.Boundary_Condition("Dirichlet", 1.0))
         self.assertEqual(a_mat.shape, (9, 9))
-        self.assertEqual(b_mat.shape, (9,))
+        self.assertEqual(b_mat.shape, (9, 1))
         
         
     def test_finite_differnces_success(self):
         grid, u = nd.finite_difference(pde_fdiff, 0, 1, nd.Boundary_Condition("Dirichlet", 0.0),
                                        nd.Boundary_Condition("Dirichlet", 1.0), 10, None)
         exact = grid
-        np.testing.assert_array_almost_equal(u, exact, 15)
+        np.testing.assert_array_almost_equal(u[:, 0], exact, 15)
         
         
     def test_explicit_methods_success(self):
@@ -65,7 +65,7 @@ class NumericalMethodsTesting(unittest.TestCase):
         grid, time, u = nd.explicit_methods(pde, 0, 1, 1, nd.Boundary_Condition("Dirichlet", 0.0),
                                             nd.Boundary_Condition("Dirichlet", 0.0), ic, 50, 1, "Euler", None)
         exact = np.exp(-np.pi**2*time[-1])*np.sin(np.pi*grid)
-        np.testing.assert_array_almost_equal(u[-1], exact, 6)
+        np.testing.assert_array_almost_equal(u[:, -2:-1], exact, 6)
         
         
     def test_implicit_methods_success(self):
@@ -73,7 +73,7 @@ class NumericalMethodsTesting(unittest.TestCase):
         grid, time, u = nd.implicit_methods(pde, 0, 1, 1, nd.Boundary_Condition("Dirichlet", 0.0),
                                             nd.Boundary_Condition("Dirichlet", 0.0), ic, 50, 0.01, 1, "Crank-Nicoloson", None)
         exact = np.exp(-np.pi**2*time[-1])*np.sin(np.pi*grid)
-        np.testing.assert_array_almost_equal(u[-1], exact, 4)
+        np.testing.assert_array_almost_equal(u[:, -2:-1], exact, 4)
         
         
     def test_imex_methods_success(self):
@@ -81,8 +81,28 @@ class NumericalMethodsTesting(unittest.TestCase):
         grid, time, u = nd.imex(pde, 0, 1, 1, nd.Boundary_Condition("Dirichlet", 0.0),
                                             nd.Boundary_Condition("Dirichlet", 0.0), ic, 50, 0.01, 1, None)
         exact = np.exp(-np.pi**2*time[-1])*np.sin(np.pi*grid)
-        np.testing.assert_array_almost_equal(u[-1], exact, 4)
- 
+        np.testing.assert_array_almost_equal(u[:, -2:-1], exact, 4)
+        
+    
+    def test_sparse_methods_success(self):
+        grid, u = nd.finite_difference(pde_fdiff, 0, 1, nd.Boundary_Condition("Dirichlet", 0.0),
+                                       nd.Boundary_Condition("Dirichlet", 1.0), 10, None, sparse=True)
+        exact = grid
+        np.testing.assert_array_almost_equal(u[:, 0], exact, 15)
+        
+        ic = lambda x, args: np.sin(np.pi*x)
+        grid, time, u = nd.implicit_methods(pde, 0, 1, 1, nd.Boundary_Condition("Dirichlet", 0.0),
+                                            nd.Boundary_Condition("Dirichlet", 0.0), ic, 50, 0.01, 1, 
+                                            "Crank-Nicoloson", None, sparse=True)
+        exact = np.exp(-np.pi**2*time[-1])*np.sin(np.pi*grid)
+        np.testing.assert_array_almost_equal(u[:, -2:-1], exact, 4)
+        
+        grid, time, u = nd.imex(pde, 0, 1, 1, nd.Boundary_Condition("Dirichlet", 0.0),
+                                            nd.Boundary_Condition("Dirichlet", 0.0), ic, 50, 0.01, 1, None, sparse=True)
+        exact = np.exp(-np.pi**2*time[-1])*np.sin(np.pi*grid)
+        np.testing.assert_array_almost_equal(u[:, -2:-1], exact, 4)
+        
+        
  
 def pde_fdiff(x, u, args):
     return 0 
