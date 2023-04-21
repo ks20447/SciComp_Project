@@ -446,7 +446,7 @@ def implicit_methods(source, a : float, b : float, d_coef : float,
     return grid, time, u
 
 
-def imex(source, a : float, b : float, d_coef : float,
+def imex_method(source, a : float, b : float, d_coef : float,
          bc_left : Boundary_Condition, bc_right : Boundary_Condition,
          ic, n : int, dt : float, t_final : float, args, sparse=False):
     """Implicit-Explicit Euler method used to solve 2nd Order PDE's from time 0 to time `t_final`, in `n` spacial steps, `dt` time step-size with an initial condition.

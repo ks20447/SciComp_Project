@@ -404,6 +404,19 @@ def pseudo_arclength(ode, states, periods, phase, parameters, p_vary, p_final, a
         
     Example
     -------
+    >>> def hopf_normal_form(t, u, args):
+    ...     b = args
+    ...     u1, u2 = u
+    ...     du1dt = b*u1 - u2 + u1*(u1**2 + u2**2) - u1*(u1**2 + u2**2)**2
+    ...     du2dt = u1 + b*u2 + u2*(u1**2 + u2**2) - u2*(u1**2 + u2**2)**2
+    ...     return [du1dt, du2dt]
+    >>> hopf_phase = lambda p, b: b*p[0] - p[1] + p[0]*(p[0]**2 + p[1]**2) - p[0]*(p[0]**2 + p[1]**2)**2
+    >>> states = [[1.0, 0.0], [1.0, 0.0]] 
+    >>> periods = [6.3, 6.3]
+    >>> parameters = [2.0, 1.96]
+    >>> p_vary, p_final = None, -1
+    >>> args = 2.0
+    >>> p_pseudo, v_pseudo = nm.pseudo_arclength(hopf_normal_form, states, periods, hopf_phase, parameters, p_vary, p_final, args)
     """ 
     
     

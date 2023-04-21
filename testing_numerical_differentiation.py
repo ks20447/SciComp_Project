@@ -78,7 +78,7 @@ class NumericalMethodsTesting(unittest.TestCase):
         
     def test_imex_methods_success(self):
         ic = lambda x, args: np.sin(np.pi*x)
-        grid, time, u = nd.imex(pde, 0, 1, 1, nd.Boundary_Condition("Dirichlet", 0.0),
+        grid, time, u = nd.imex_method(pde, 0, 1, 1, nd.Boundary_Condition("Dirichlet", 0.0),
                                             nd.Boundary_Condition("Dirichlet", 0.0), ic, 50, 0.01, 1, None)
         exact = np.exp(-np.pi**2*time[-1])*np.sin(np.pi*grid)
         np.testing.assert_array_almost_equal(u[:, -2:-1], exact, 4)
@@ -97,7 +97,7 @@ class NumericalMethodsTesting(unittest.TestCase):
         exact = np.exp(-np.pi**2*time[-1])*np.sin(np.pi*grid)
         np.testing.assert_array_almost_equal(u[:, -2:-1], exact, 4)
         
-        grid, time, u = nd.imex(pde, 0, 1, 1, nd.Boundary_Condition("Dirichlet", 0.0),
+        grid, time, u = nd.imex_method(pde, 0, 1, 1, nd.Boundary_Condition("Dirichlet", 0.0),
                                             nd.Boundary_Condition("Dirichlet", 0.0), ic, 50, 0.01, 1, None, sparse=True)
         exact = np.exp(-np.pi**2*time[-1])*np.sin(np.pi*grid)
         np.testing.assert_array_almost_equal(u[:, -2:-1], exact, 4)
