@@ -450,10 +450,9 @@ def pseudo_arclength(ode, states, periods, phase, parameters, p_vary, p_final, a
     
     while  ind < max_iter:
         secant = v[ind] - v[ind - 1]
-        secant[-1] = secant[-1]
         pred =  v[ind] + secant
         
-        if pred[-1] < p_final or pred[-1] > p0:
+        if pred[-1] < p_final:
             break  
         
         if isinstance(args, (int, float)):
