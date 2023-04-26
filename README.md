@@ -22,6 +22,9 @@ Use the following pip commands to install the packages and libraries required to
 ```bash
 pip install -r requirements.txt
 ```
+
+*Note: The key requrirements are numpy, matplotlib and scipy*
+
 ## Usage
 After creating a suitable environment and cloning, the modules can be imported like any other python package as needed:
 
